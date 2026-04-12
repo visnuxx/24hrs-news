@@ -47,7 +47,12 @@ function initials(src) {
 function dedupe(items) {
   const seen = new Set();
   return items.filter((i) => {
-    const k = (i.title || "").toLowerCase().slice(0, 60);
+    const k = (i.title || "")
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, "")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 60);
     if (seen.has(k)) return false;
     seen.add(k);
     return true;
