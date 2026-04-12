@@ -21,68 +21,20 @@ const FEEDS = [
   },
 ];
 
-const TOPICS = [
-  { label: "All", keywords: [] },
-  {
-    label: "AI & Tech",
-    keywords: [
-      "ai", "artificial intelligence", "openai", "chatgpt", "gemini", "gpt",
-      "tech", "technology", "apple", "google", "microsoft", "meta", "nvidia",
-      "robot", "chip", "semiconductor", "software", "iphone", "android",
-      "cyber", "hack", "data breach", "elon", "tesla", "spacex", "x.com",
-      "startup", "app", "gadget", "5g", "quantum"
-    ],
-  },
-  {
-    label: "Israel-Iran",
-    keywords: [
-      "israel", "iran", "gaza", "hamas", "hezbollah", "west bank",
-      "tel aviv", "tehran", "netanyahu", "idf", "ceasefire", "airstrike",
-      "middle east", "palestine", "lebanese", "beirut", "rafah", "hostage",
-      "nuclear", "sanctions", "irgc", "drone strike"
-    ],
-  },
-  {
-    label: "US Politics",
-    keywords: [
-      "trump", "harris", "biden", "white house", "congress", "senate",
-      "democrat", "republican", "washington dc", "tariff", "oval office",
-      "protest", "rally", "immigration", "border", "maga", "doge",
-      "federal", "supreme court", "election", "pentagon", "nato",
-      "epa", "fbi", "cia", "department of", "executive order"
-    ],
-  },
-  {
-    label: "India & TN",
-    keywords: [
-      "india", "indian", "tamil nadu", "tn ", "chennai", "coimbatore",
-      "madurai", "modi", "delhi", "mumbai", "bangalore", "bengaluru",
-      "dmk", "aiadmk", "stalin", "bjp", "congress party", "lok sabha",
-      "rupee", "bcci", "isro", "iit", "neet", "kolkata", "hyderabad"
-    ],
-  },
-  {
-    label: "Climate",
-    keywords: [
-      "climate", "climate change", "global warming", "net zero", "carbon",
-      "emission", "flood", "drought", "wildfire", "hurricane", "cyclone",
-      "heatwave", "heat wave", "co2", "renewable", "solar", "wind energy",
-      "glacier", "sea level", "deforestation", "pollution", "fossil fuel",
-      "green energy", "ipcc", "cop30", "storm", "earthquake", "tsunami"
-    ],
-  },
-  {
-    label: "Sports",
-    keywords: [
-      "cricket", "ipl", "test match", "odi", "t20", "bcci", "wcup",
-      "football", "premier league", "fifa", "champions league", "la liga",
-      "bundesliga", "serie a", "world cup", "euro",
-      "tennis", "wimbledon", "us open", "french open", "australian open",
-      "olympic", "f1", "formula 1", "grand prix", "nba", "nfl",
-      "golf", "pga", "boxing", "ufc", "transferred", "signed", "manager sacked"
-    ],
-  },
-];
+// Label → emoji for visual flair on chips
+const LABEL_EMOJI = {
+  Politics: "🏛️",
+  Business: "📈",
+  Technology: "💻",
+  Sports: "⚽",
+  Crime: "🔍",
+  Entertainment: "🎬",
+  Health: "🏥",
+  Climate: "🌍",
+  World: "🌐",
+  Conflict: "⚔️",
+  News: "📰",
+};
 
 function timeAgo(dateStr) {
   if (!dateStr) return "";
@@ -114,21 +66,17 @@ function dedupe(items) {
   });
 }
 
-function within24h(item) {
-  if (!item.pubDate) return true;
-  return Date.now() - new Date(item.pubDate) < 86400000;
-}
-
 export default function App() {
   const [news, setNews] = useState([]);
   const [status, setStatus] = useState("idle");
   const [dark, setDark] = useState(false);
   const [activeFeedKey, setActiveFeedKey] = useState(null);
-  const [activeTopic, setActiveTopic] = useState("All");
+  const [activeLabel, setActiveLabel] = useState("All");
   const [search, setSearch] = useState("");
 
   const currentFeed = FEEDS.find((f) => f.key === activeFeedKey) || FEEDS[0];
 
+  // Theme tokens
   const bg = dark ? "#0f0f0f" : "#ffffff";
   const textPrimary = dark ? "#f0f0ee" : "#1a1a1a";
   const textSecondary = dark ? "#888" : "#555";
@@ -141,36 +89,41 @@ export default function App() {
 
   async function fetchNews(feed) {
     setActiveFeedKey(feed.key);
-    setActiveTopic("All");
+    setActiveLabel("All");
     setSearch("");
     setStatus("loading");
     setNews([]);
     try {
       const res = await fetch(API_BASE + feed.endpoint);
       if (!res.ok) throw new Error("bad response");
-      let data = await res.json();
-      data = dedupe(data.filter(within24h)).sort(
-        (a, b) => new Date(b.pubDate) - new Date(a.pubDate)
-      );
+      const data = await res.json();
+      // Backend already deduped + sorted + labeled; just set it
       setNews(data);
       setStatus("success");
-    } catch (e) {
+    } catch {
       setNews([]);
       setStatus("error");
     }
   }
 
+  // Derive available labels from actual data — only labels that exist in today's feed
+  const availableLabels = useMemo(() => {
+    const counts = {};
+    news.forEach((item) => {
+      const lbl = item.label || "News";
+      counts[lbl] = (counts[lbl] || 0) + 1;
+    });
+    // Sort by frequency descending so most-common labels appear first
+    return Object.entries(counts)
+      .sort((a, b) => b[1] - a[1])
+      .map(([label, count]) => ({ label, count }));
+  }, [news]);
+
   const filteredNews = useMemo(() => {
     let result = news;
 
-    if (activeTopic !== "All") {
-      const topic = TOPICS.find((t) => t.label === activeTopic);
-      if (topic && topic.keywords.length > 0) {
-        result = result.filter((item) => {
-          const text = (item.title || "").toLowerCase();
-          return topic.keywords.some((kw) => text.includes(kw));
-        });
-      }
+    if (activeLabel !== "All") {
+      result = result.filter((item) => (item.label || "News") === activeLabel);
     }
 
     if (search.trim()) {
@@ -181,7 +134,7 @@ export default function App() {
     }
 
     return result;
-  }, [news, activeTopic, search]);
+  }, [news, activeLabel, search]);
 
   return (
     <div
@@ -193,13 +146,8 @@ export default function App() {
         transition: "background 0.2s",
       }}
     >
-      <div
-        style={{
-          maxWidth: 660,
-          margin: "0 auto",
-          padding: "2rem 1.25rem 4rem",
-        }}
-      >
+      <div style={{ maxWidth: 660, margin: "0 auto", padding: "2rem 1.25rem 4rem" }}>
+
         {/* Header */}
         <div
           style={{
@@ -210,17 +158,8 @@ export default function App() {
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <div
-              style={{
-                width: 7,
-                height: 7,
-                borderRadius: "50%",
-                background: "#378ADD",
-              }}
-            />
-            <span style={{ fontSize: 20, fontWeight: 500, letterSpacing: -0.5 }}>
-              briefed
-            </span>
+            <div style={{ width: 7, height: 7, borderRadius: "50%", background: "#378ADD" }} />
+            <span style={{ fontSize: 20, fontWeight: 500, letterSpacing: -0.5 }}>briefed</span>
             <span
               style={{
                 fontSize: 11,
@@ -302,7 +241,7 @@ export default function App() {
           })}
         </div>
 
-        {/* Topic chips + search — only after news is loaded */}
+        {/* Dynamic chips + search */}
         {status === "success" && (
           <div style={{ marginBottom: "1rem" }}>
             <div
@@ -313,12 +252,36 @@ export default function App() {
                 marginBottom: "0.75rem",
               }}
             >
-              {TOPICS.map((topic) => {
-                const isActive = activeTopic === topic.label;
+              {/* "All" chip */}
+              <button
+                onClick={() => setActiveLabel("All")}
+                style={{
+                  fontSize: 12,
+                  padding: "4px 12px",
+                  borderRadius: 999,
+                  cursor: "pointer",
+                  fontFamily: "inherit",
+                  fontWeight: activeLabel === "All" ? 500 : 400,
+                  background: activeLabel === "All" ? currentFeed.bg : "transparent",
+                  color: activeLabel === "All" ? currentFeed.textColor : textTertiary,
+                  border:
+                    activeLabel === "All"
+                      ? "0.5px solid " + currentFeed.color
+                      : "0.5px solid " + border,
+                  transition: "all 0.15s",
+                }}
+              >
+                All <span style={{ opacity: 0.6 }}>{news.length}</span>
+              </button>
+
+              {/* One chip per label that actually appears in today's feed */}
+              {availableLabels.map(({ label, count }) => {
+                const isActive = activeLabel === label;
+                const emoji = LABEL_EMOJI[label] || "📰";
                 return (
                   <button
-                    key={topic.label}
-                    onClick={() => setActiveTopic(topic.label)}
+                    key={label}
+                    onClick={() => setActiveLabel(label)}
                     style={{
                       fontSize: 12,
                       padding: "4px 12px",
@@ -332,9 +295,14 @@ export default function App() {
                         ? "0.5px solid " + currentFeed.color
                         : "0.5px solid " + border,
                       transition: "all 0.15s",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 4,
                     }}
                   >
-                    {topic.label}
+                    <span style={{ fontSize: 11 }}>{emoji}</span>
+                    {label}
+                    <span style={{ opacity: 0.5 }}>{count}</span>
                   </button>
                 );
               })}
@@ -362,13 +330,7 @@ export default function App() {
         )}
 
         {/* Divider */}
-        <div
-          style={{
-            height: "0.5px",
-            background: border,
-            marginBottom: "1rem",
-          }}
-        />
+        <div style={{ height: "0.5px", background: border, marginBottom: "1rem" }} />
 
         {/* Feed label row */}
         <div
@@ -380,7 +342,7 @@ export default function App() {
         >
           <span style={{ fontSize: 12, color: textTertiary, letterSpacing: 0.4 }}>
             {status === "loading"
-              ? "LOADING..."
+              ? "LOADING & LABELING..."
               : activeFeedKey
               ? currentFeed.label.toUpperCase()
               : "SELECT A FEED"}
@@ -388,6 +350,9 @@ export default function App() {
           {status === "success" && (
             <span style={{ fontSize: 12, color: textTertiary }}>
               {filteredNews.length} article{filteredNews.length !== 1 ? "s" : ""}
+              {activeLabel !== "All" && (
+                <span style={{ color: currentFeed.color }}> · {activeLabel}</span>
+              )}
             </span>
           )}
         </div>
@@ -395,14 +360,7 @@ export default function App() {
         {/* Idle state */}
         {status === "idle" && (
           <div style={{ textAlign: "center", padding: "4rem 0" }}>
-            <div
-              style={{
-                fontSize: 14,
-                fontWeight: 500,
-                color: textPrimary,
-                marginBottom: 6,
-              }}
-            >
+            <div style={{ fontSize: 14, fontWeight: 500, color: textPrimary, marginBottom: 6 }}>
               What would you like to read?
             </div>
             <div style={{ fontSize: 13, color: textTertiary, marginBottom: 24 }}>
@@ -434,14 +392,7 @@ export default function App() {
         {/* Error state */}
         {status === "error" && (
           <div style={{ textAlign: "center", padding: "3rem 0" }}>
-            <div
-              style={{
-                fontSize: 14,
-                fontWeight: 500,
-                color: "#A32D2D",
-                marginBottom: 4,
-              }}
-            >
+            <div style={{ fontSize: 14, fontWeight: 500, color: "#A32D2D", marginBottom: 4 }}>
               Failed to load
             </div>
             <div style={{ fontSize: 13, color: textTertiary }}>
@@ -453,31 +404,9 @@ export default function App() {
         {/* Loading skeletons */}
         {status === "loading" &&
           [1, 2, 3, 4, 5].map((i) => (
-            <div
-              key={i}
-              style={{
-                padding: "16px 0",
-                borderBottom: "0.5px solid " + border,
-              }}
-            >
-              <div
-                style={{
-                  height: 14,
-                  background: skel,
-                  borderRadius: 4,
-                  width: "85%",
-                  marginBottom: 8,
-                }}
-              />
-              <div
-                style={{
-                  height: 14,
-                  background: skel,
-                  borderRadius: 4,
-                  width: "60%",
-                  marginBottom: 10,
-                }}
-              />
+            <div key={i} style={{ padding: "16px 0", borderBottom: "0.5px solid " + border }}>
+              <div style={{ height: 14, background: skel, borderRadius: 4, width: "85%", marginBottom: 8 }} />
+              <div style={{ height: 14, background: skel, borderRadius: 4, width: "60%", marginBottom: 10 }} />
               <div style={{ display: "flex", gap: 8 }}>
                 <div style={{ height: 12, background: skel, borderRadius: 4, width: 60 }} />
                 <div style={{ height: 12, background: skel, borderRadius: 4, width: 40 }} />
@@ -488,19 +417,12 @@ export default function App() {
         {/* No results */}
         {status === "success" && filteredNews.length === 0 && (
           <div style={{ textAlign: "center", padding: "3rem 0" }}>
-            <div
-              style={{
-                fontSize: 14,
-                fontWeight: 500,
-                color: textPrimary,
-                marginBottom: 4,
-              }}
-            >
+            <div style={{ fontSize: 14, fontWeight: 500, color: textPrimary, marginBottom: 4 }}>
               No articles found
             </div>
             <div style={{ fontSize: 13, color: textTertiary }}>
-              {search || activeTopic !== "All"
-                ? "Try a different topic or clear the search"
+              {search || activeLabel !== "All"
+                ? "Try a different label or clear the search"
                 : "Try again later"}
             </div>
           </div>
@@ -517,6 +439,26 @@ export default function App() {
                 borderTop: i === 0 ? "0.5px solid " + border : "none",
               }}
             >
+              {/* Label pill on each card */}
+              {item.label && item.label !== "News" && (
+                <div style={{ marginBottom: 6 }}>
+                  <span
+                    style={{
+                      fontSize: 10,
+                      fontWeight: 600,
+                      letterSpacing: 0.4,
+                      color: currentFeed.textColor,
+                      background: currentFeed.bg,
+                      padding: "2px 8px",
+                      borderRadius: 999,
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    {LABEL_EMOJI[item.label]} {item.label}
+                  </span>
+                </div>
+              )}
+
               <div
                 style={{
                   fontSize: 15,
@@ -532,13 +474,8 @@ export default function App() {
               >
                 {item.title}
               </div>
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                }}
-              >
+
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                   <span
                     style={{
@@ -556,25 +493,17 @@ export default function App() {
                   >
                     {initials(item.source)}
                   </span>
-                  <span
-                    style={{ fontSize: 12, color: textSecondary, fontWeight: 500 }}
-                  >
+                  <span style={{ fontSize: 12, color: textSecondary, fontWeight: 500 }}>
                     {item.source}
                   </span>
                   <span style={{ color: border, fontSize: 11 }}>·</span>
-                  <span style={{ fontSize: 12, color: textTertiary }}>
-                    {timeAgo(item.pubDate)}
-                  </span>
+                  <span style={{ fontSize: 12, color: textTertiary }}>{timeAgo(item.pubDate)}</span>
                 </div>
                 <a
                   href={item.link}
                   target="_blank"
                   rel="noopener noreferrer"
-                  style={{
-                    fontSize: 12,
-                    color: currentFeed.color,
-                    textDecoration: "none",
-                  }}
+                  style={{ fontSize: 12, color: currentFeed.color, textDecoration: "none" }}
                 >
                   Read ↗
                 </a>

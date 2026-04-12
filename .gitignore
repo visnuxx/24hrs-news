@@ -5,4 +5,5 @@ backend/node_modules/
 dist/
 frontend/dist/
 
-.env
+env/
+backend/.env
