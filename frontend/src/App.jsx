@@ -84,10 +84,9 @@ export default function App() {
       const res = await fetch(API_BASE + feed.endpoint);
       if (!res.ok) throw new Error("bad response");
       let data = await res.json();
-      data = dedupe(data.filter(within24h)).map((item) => ({
-        ...item,
-        source: feed.source,
-      }));
+      data = dedupe(data.filter(within24h)).sort(
+        (a, b) => new Date(b.pubDate) - new Date(a.pubDate)
+      );
       setNews(data);
       setStatus("success");
     } catch (e) {
@@ -244,8 +243,8 @@ export default function App() {
             {status === "loading"
               ? "LOADING..."
               : activeFeedKey
-              ? currentFeed.label.toUpperCase()
-              : "SELECT A FEED"}
+                ? currentFeed.label.toUpperCase()
+                : "SELECT A FEED"}
           </span>
           {status === "success" && (
             <span style={{ fontSize: 12, color: textTertiary }}>
