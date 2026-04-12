@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 
 const API_BASE = "http://localhost:5000";
 
@@ -7,7 +7,6 @@ const FEEDS = [
     key: "tamil-nadu",
     label: "Tamil Nadu",
     endpoint: "/news/tamil-nadu",
-    source: "Google News",
     color: "#1D9E75",
     bg: "#E1F5EE",
     textColor: "#085041",
@@ -16,10 +15,72 @@ const FEEDS = [
     key: "international",
     label: "International",
     endpoint: "/news/international",
-    source: "BBC News",
     color: "#185FA5",
     bg: "#E6F1FB",
     textColor: "#0C447C",
+  },
+];
+
+const TOPICS = [
+  { label: "All", keywords: [] },
+  {
+    label: "AI & Tech",
+    keywords: [
+      "ai", "artificial intelligence", "openai", "chatgpt", "gemini", "gpt",
+      "tech", "technology", "apple", "google", "microsoft", "meta", "nvidia",
+      "robot", "chip", "semiconductor", "software", "iphone", "android",
+      "cyber", "hack", "data breach", "elon", "tesla", "spacex", "x.com",
+      "startup", "app", "gadget", "5g", "quantum"
+    ],
+  },
+  {
+    label: "Israel-Iran",
+    keywords: [
+      "israel", "iran", "gaza", "hamas", "hezbollah", "west bank",
+      "tel aviv", "tehran", "netanyahu", "idf", "ceasefire", "airstrike",
+      "middle east", "palestine", "lebanese", "beirut", "rafah", "hostage",
+      "nuclear", "sanctions", "irgc", "drone strike"
+    ],
+  },
+  {
+    label: "US Politics",
+    keywords: [
+      "trump", "harris", "biden", "white house", "congress", "senate",
+      "democrat", "republican", "washington dc", "tariff", "oval office",
+      "protest", "rally", "immigration", "border", "maga", "doge",
+      "federal", "supreme court", "election", "pentagon", "nato",
+      "epa", "fbi", "cia", "department of", "executive order"
+    ],
+  },
+  {
+    label: "India & TN",
+    keywords: [
+      "india", "indian", "tamil nadu", "tn ", "chennai", "coimbatore",
+      "madurai", "modi", "delhi", "mumbai", "bangalore", "bengaluru",
+      "dmk", "aiadmk", "stalin", "bjp", "congress party", "lok sabha",
+      "rupee", "bcci", "isro", "iit", "neet", "kolkata", "hyderabad"
+    ],
+  },
+  {
+    label: "Climate",
+    keywords: [
+      "climate", "climate change", "global warming", "net zero", "carbon",
+      "emission", "flood", "drought", "wildfire", "hurricane", "cyclone",
+      "heatwave", "heat wave", "co2", "renewable", "solar", "wind energy",
+      "glacier", "sea level", "deforestation", "pollution", "fossil fuel",
+      "green energy", "ipcc", "cop30", "storm", "earthquake", "tsunami"
+    ],
+  },
+  {
+    label: "Sports",
+    keywords: [
+      "cricket", "ipl", "test match", "odi", "t20", "bcci", "wcup",
+      "football", "premier league", "fifa", "champions league", "la liga",
+      "bundesliga", "serie a", "world cup", "euro",
+      "tennis", "wimbledon", "us open", "french open", "australian open",
+      "olympic", "f1", "formula 1", "grand prix", "nba", "nfl",
+      "golf", "pga", "boxing", "ufc", "transferred", "signed", "manager sacked"
+    ],
   },
 ];
 
@@ -35,13 +96,7 @@ function timeAgo(dateStr) {
 
 function initials(src) {
   if (!src) return "?";
-  return src
-    .trim()
-    .split(/\s+/)
-    .map((w) => w[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
+  return src.trim().split(/\s+/).map((w) => w[0]).join("").slice(0, 2).toUpperCase();
 }
 
 function dedupe(items) {
@@ -69,6 +124,8 @@ export default function App() {
   const [status, setStatus] = useState("idle");
   const [dark, setDark] = useState(false);
   const [activeFeedKey, setActiveFeedKey] = useState(null);
+  const [activeTopic, setActiveTopic] = useState("All");
+  const [search, setSearch] = useState("");
 
   const currentFeed = FEEDS.find((f) => f.key === activeFeedKey) || FEEDS[0];
 
@@ -80,9 +137,12 @@ export default function App() {
   const skel = dark ? "#1e1e1e" : "#efefed";
   const tabBg = dark ? "#1a1a1a" : "#f5f5f3";
   const tabActiveBg = dark ? "#2a2a2a" : "#ffffff";
+  const inputBg = dark ? "#1a1a1a" : "#f5f5f3";
 
   async function fetchNews(feed) {
     setActiveFeedKey(feed.key);
+    setActiveTopic("All");
+    setSearch("");
     setStatus("loading");
     setNews([]);
     try {
@@ -99,6 +159,29 @@ export default function App() {
       setStatus("error");
     }
   }
+
+  const filteredNews = useMemo(() => {
+    let result = news;
+
+    if (activeTopic !== "All") {
+      const topic = TOPICS.find((t) => t.label === activeTopic);
+      if (topic && topic.keywords.length > 0) {
+        result = result.filter((item) => {
+          const text = (item.title || "").toLowerCase();
+          return topic.keywords.some((kw) => text.includes(kw));
+        });
+      }
+    }
+
+    if (search.trim()) {
+      const q = search.trim().toLowerCase();
+      result = result.filter((item) =>
+        (item.title || "").toLowerCase().includes(q)
+      );
+    }
+
+    return result;
+  }, [news, activeTopic, search]);
 
   return (
     <div
@@ -135,13 +218,7 @@ export default function App() {
                 background: "#378ADD",
               }}
             />
-            <span
-              style={{
-                fontSize: 20,
-                fontWeight: 500,
-                letterSpacing: -0.5,
-              }}
-            >
+            <span style={{ fontSize: 20, fontWeight: 500, letterSpacing: -0.5 }}>
               briefed
             </span>
             <span
@@ -179,7 +256,7 @@ export default function App() {
           style={{
             display: "flex",
             gap: 6,
-            marginBottom: "1.5rem",
+            marginBottom: "1rem",
             background: tabBg,
             borderRadius: 10,
             padding: 4,
@@ -225,12 +302,71 @@ export default function App() {
           })}
         </div>
 
+        {/* Topic chips + search — only after news is loaded */}
+        {status === "success" && (
+          <div style={{ marginBottom: "1rem" }}>
+            <div
+              style={{
+                display: "flex",
+                gap: 6,
+                flexWrap: "wrap",
+                marginBottom: "0.75rem",
+              }}
+            >
+              {TOPICS.map((topic) => {
+                const isActive = activeTopic === topic.label;
+                return (
+                  <button
+                    key={topic.label}
+                    onClick={() => setActiveTopic(topic.label)}
+                    style={{
+                      fontSize: 12,
+                      padding: "4px 12px",
+                      borderRadius: 999,
+                      cursor: "pointer",
+                      fontFamily: "inherit",
+                      fontWeight: isActive ? 500 : 400,
+                      background: isActive ? currentFeed.bg : "transparent",
+                      color: isActive ? currentFeed.textColor : textTertiary,
+                      border: isActive
+                        ? "0.5px solid " + currentFeed.color
+                        : "0.5px solid " + border,
+                      transition: "all 0.15s",
+                    }}
+                  >
+                    {topic.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            <input
+              type="text"
+              placeholder="Search headlines..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              style={{
+                width: "100%",
+                boxSizing: "border-box",
+                fontSize: 13,
+                padding: "8px 12px",
+                borderRadius: 8,
+                border: "0.5px solid " + border,
+                background: inputBg,
+                color: textPrimary,
+                fontFamily: "inherit",
+                outline: "none",
+              }}
+            />
+          </div>
+        )}
+
         {/* Divider */}
         <div
           style={{
             height: "0.5px",
             background: border,
-            marginBottom: "1.5rem",
+            marginBottom: "1rem",
           }}
         />
 
@@ -242,18 +378,16 @@ export default function App() {
             marginBottom: "0.75rem",
           }}
         >
-          <span
-            style={{ fontSize: 12, color: textTertiary, letterSpacing: 0.4 }}
-          >
+          <span style={{ fontSize: 12, color: textTertiary, letterSpacing: 0.4 }}>
             {status === "loading"
               ? "LOADING..."
               : activeFeedKey
-                ? currentFeed.label.toUpperCase()
-                : "SELECT A FEED"}
+              ? currentFeed.label.toUpperCase()
+              : "SELECT A FEED"}
           </span>
           {status === "success" && (
             <span style={{ fontSize: 12, color: textTertiary }}>
-              {news.length} article{news.length !== 1 ? "s" : ""}
+              {filteredNews.length} article{filteredNews.length !== 1 ? "s" : ""}
             </span>
           )}
         </div>
@@ -271,18 +405,10 @@ export default function App() {
             >
               What would you like to read?
             </div>
-            <div
-              style={{
-                fontSize: 13,
-                color: textTertiary,
-                marginBottom: 24,
-              }}
-            >
+            <div style={{ fontSize: 13, color: textTertiary, marginBottom: 24 }}>
               Choose Tamil Nadu or International news above
             </div>
-            <div
-              style={{ display: "flex", justifyContent: "center", gap: 10 }}
-            >
+            <div style={{ display: "flex", justifyContent: "center", gap: 10 }}>
               {FEEDS.map((feed) => (
                 <button
                   key={feed.key}
@@ -353,28 +479,14 @@ export default function App() {
                 }}
               />
               <div style={{ display: "flex", gap: 8 }}>
-                <div
-                  style={{
-                    height: 12,
-                    background: skel,
-                    borderRadius: 4,
-                    width: 60,
-                  }}
-                />
-                <div
-                  style={{
-                    height: 12,
-                    background: skel,
-                    borderRadius: 4,
-                    width: 40,
-                  }}
-                />
+                <div style={{ height: 12, background: skel, borderRadius: 4, width: 60 }} />
+                <div style={{ height: 12, background: skel, borderRadius: 4, width: 40 }} />
               </div>
             </div>
           ))}
 
-        {/* Empty state */}
-        {status === "success" && news.length === 0 && (
+        {/* No results */}
+        {status === "success" && filteredNews.length === 0 && (
           <div style={{ textAlign: "center", padding: "3rem 0" }}>
             <div
               style={{
@@ -387,14 +499,16 @@ export default function App() {
               No articles found
             </div>
             <div style={{ fontSize: 13, color: textTertiary }}>
-              Try again later
+              {search || activeTopic !== "All"
+                ? "Try a different topic or clear the search"
+                : "Try again later"}
             </div>
           </div>
         )}
 
         {/* News list */}
         {status === "success" &&
-          news.map((item, i) => (
+          filteredNews.map((item, i) => (
             <div
               key={item.link || i}
               style={{
@@ -425,9 +539,7 @@ export default function App() {
                   justifyContent: "space-between",
                 }}
               >
-                <div
-                  style={{ display: "flex", alignItems: "center", gap: 6 }}
-                >
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                   <span
                     style={{
                       width: 20,
@@ -445,11 +557,7 @@ export default function App() {
                     {initials(item.source)}
                   </span>
                   <span
-                    style={{
-                      fontSize: 12,
-                      color: textSecondary,
-                      fontWeight: 500,
-                    }}
+                    style={{ fontSize: 12, color: textSecondary, fontWeight: 500 }}
                   >
                     {item.source}
                   </span>
