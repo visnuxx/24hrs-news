@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 
-const API_BASE = "http://localhost:5000";
+const API_BASE = "https://two4hrs-news.onrender.com/";
 
 const FEEDS = [
   {
