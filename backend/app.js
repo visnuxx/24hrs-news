@@ -25,13 +25,43 @@ const FEEDS = {
     },
   ],
   tamilNadu: [
+    // ── State-level feeds ────────────────────────────────────────────────────
+    {
+      url: "https://www.thehindu.com/news/national/tamil-nadu/feeder/default.rss",
+      source: "The Hindu",
+    },
     {
       url: "https://news.google.com/rss/search?q=tamil+nadu&hl=en-IN&gl=IN&ceid=IN:en",
       source: "Google News",
     },
     {
-      url: "https://www.thehindu.com/news/national/tamil-nadu/feeder/default.rss",
-      source: "The Hindu",
+      url: "https://www.thenewsminute.com/feed",
+      source: "The News Minute",
+    },
+    {
+      url: "https://www.newindianexpress.com/state/tamil-nadu/feed",
+      source: "New Indian Express",
+    },
+    // ── City / Regional feeds ────────────────────────────────────────────────
+    {
+      url: "https://news.google.com/rss/search?q=chennai+news&hl=en-IN&gl=IN&ceid=IN:en",
+      source: "Google News · Chennai",
+    },
+    {
+      url: "https://news.google.com/rss/search?q=coimbatore+news&hl=en-IN&gl=IN&ceid=IN:en",
+      source: "Google News · Coimbatore",
+    },
+    {
+      url: "https://news.google.com/rss/search?q=madurai+news&hl=en-IN&gl=IN&ceid=IN:en",
+      source: "Google News · Madurai",
+    },
+    {
+      url: "https://news.google.com/rss/search?q=trichy+news&hl=en-IN&gl=IN&ceid=IN:en",
+      source: "Google News · Trichy",
+    },
+    {
+      url: "https://news.google.com/rss/search?q=salem+tamil+nadu+news&hl=en-IN&gl=IN&ceid=IN:en",
+      source: "Google News · Salem",
     },
   ],
 };
@@ -50,99 +80,99 @@ const VALID_LABELS = [
 const KEYWORD_RULES = [
   {
     label: "Politics",
-    exact:   ["election", "elections", "vote", "votes", "voting", "campaign",
-              "parliament", "minister", "government", "president", "manifesto",
-              "dmk", "aiadmk", "bjp", "congress", "modi", "trump", "biden",
-              "harris", "lok sabha", "rajya sabha", "mla", "mp", "constituency",
-              "candidate", "candidates", "polling", "rally", "cabinet",
-              "opposition", "ruling party", "by-election", "governor",
-              "senate", "referendum", "ballot", "incumbent", "tvk", "edappadi",
-              "palaniswami", "kanimozhi", "stalin", "dravidian"],
+    exact: ["election", "elections", "vote", "votes", "voting", "campaign",
+      "parliament", "minister", "government", "president", "manifesto",
+      "dmk", "aiadmk", "bjp", "congress", "modi", "trump", "biden",
+      "harris", "lok sabha", "rajya sabha", "mla", "mp", "constituency",
+      "candidate", "candidates", "polling", "rally", "cabinet",
+      "opposition", "ruling party", "by-election", "governor",
+      "senate", "referendum", "ballot", "incumbent", "tvk", "edappadi",
+      "palaniswami", "kanimozhi", "stalin", "dravidian"],
     partial: ["prime minister", "chief minister", "political party", "poll result",
-              "election result", "votes cast", "campaigns for"],
+      "election result", "votes cast", "campaigns for"],
   },
   {
     label: "Conflict",
-    exact:   ["war", "wars", "missile", "missiles", "bomb", "bombs", "airstrike",
-              "airstrikes", "troops", "soldier", "soldiers", "ceasefire",
-              "hostage", "hamas", "hezbollah", "ukraine", "russia", "gaza",
-              "israel", "iran", "nato", "artillery", "invasion", "shelling",
-              "casualties", "idf", "irgc", "frontline"],
+    exact: ["war", "wars", "missile", "missiles", "bomb", "bombs", "airstrike",
+      "airstrikes", "troops", "soldier", "soldiers", "ceasefire",
+      "hostage", "hamas", "hezbollah", "ukraine", "russia", "gaza",
+      "israel", "iran", "nato", "artillery", "invasion", "shelling",
+      "casualties", "idf", "irgc", "frontline"],
     partial: ["military operation", "armed forces", "terror attack", "suicide bomb",
-              "rocket fire", "ground offensive"],
+      "rocket fire", "ground offensive"],
   },
   {
     label: "Sports",
-    exact:   ["cricket", "ipl", "t20", "odi", "bcci", "football", "fifa",
-              "tennis", "wimbledon", "olympic", "olympics", "nba", "nfl",
-              "golf", "boxing", "ufc", "wicket", "batting", "bowling",
-              "wickets", "innings", "over", "penalty", "goalkeeper", "striker"],
+    exact: ["cricket", "ipl", "t20", "odi", "bcci", "football", "fifa",
+      "tennis", "wimbledon", "olympic", "olympics", "nba", "nfl",
+      "golf", "boxing", "ufc", "wicket", "batting", "bowling",
+      "wickets", "innings", "over", "penalty", "goalkeeper", "striker"],
     partial: ["premier league", "champions league", "la liga", "formula 1",
-              "grand prix", "series win", "world cup", "test match",
-              "match preview", "match report", "transfer window", "signed for",
-              "sports news", "ipl 2025", "ipl 2026"],
+      "grand prix", "series win", "world cup", "test match",
+      "match preview", "match report", "transfer window", "signed for",
+      "sports news", "ipl 2025", "ipl 2026"],
   },
   {
     label: "Technology",
-    exact:   ["ai", "openai", "chatgpt", "gemini", "gpt", "nvidia", "iphone",
-              "android", "5g", "semiconductor", "cybersecurity", "algorithm",
-              "smartphone", "laptop", "robot", "robotics", "satellite", "drone",
-              "drones", "spacex", "tesla", "microsoft", "apple", "google",
-              "meta", "software", "hardware", "startup", "startups"],
+    exact: ["ai", "openai", "chatgpt", "gemini", "gpt", "nvidia", "iphone",
+      "android", "5g", "semiconductor", "cybersecurity", "algorithm",
+      "smartphone", "laptop", "robot", "robotics", "satellite", "drone",
+      "drones", "spacex", "tesla", "microsoft", "apple", "google",
+      "meta", "software", "hardware", "startup", "startups"],
     partial: ["artificial intelligence", "machine learning", "data breach",
-              "electric vehicle", "tech company", "tech giant", "cloud computing",
-              "quantum computing", "generative ai"],
+      "electric vehicle", "tech company", "tech giant", "cloud computing",
+      "quantum computing", "generative ai"],
   },
   {
     label: "Business",
-    exact:   ["gdp", "rupee", "inflation", "rbi", "sebi", "ipo", "merger",
-              "acquisition", "tariff", "tariffs", "recession", "nse", "bse",
-              "sensex", "nifty", "budget", "revenue", "profit", "earnings"],
+    exact: ["gdp", "rupee", "inflation", "rbi", "sebi", "ipo", "merger",
+      "acquisition", "tariff", "tariffs", "recession", "nse", "bse",
+      "sensex", "nifty", "budget", "revenue", "profit", "earnings"],
     partial: ["stock market", "interest rate", "trade deficit", "economic growth",
-              "fiscal policy", "foreign investment", "market cap", "quarterly results",
-              "world bank", "imf loan"],
+      "fiscal policy", "foreign investment", "market cap", "quarterly results",
+      "world bank", "imf loan"],
   },
   {
     label: "Crime",
-    exact:   ["arrested", "murder", "robbery", "fraud", "accused", "verdict",
-              "convicted", "jail", "prison", "fir", "cbi", "cid", "smuggling",
-              "kidnap", "kidnapped", "assault", "rape", "detained", "custody",
-              "bail", "chargesheet", "trafficking"],
+    exact: ["arrested", "murder", "robbery", "fraud", "accused", "verdict",
+      "convicted", "jail", "prison", "fir", "cbi", "cid", "smuggling",
+      "kidnap", "kidnapped", "assault", "rape", "detained", "custody",
+      "bail", "chargesheet", "trafficking"],
     partial: ["police arrest", "under investigation", "drug bust", "gang war",
-              "court hearing", "sentenced to", "filed case"],
+      "court hearing", "sentenced to", "filed case"],
   },
   {
     label: "Health",
-    exact:   ["vaccine", "cancer", "diabetes", "epidemic", "pandemic", "icmr",
-              "aiims", "outbreak", "mortality", "surgery"],
+    exact: ["vaccine", "cancer", "diabetes", "epidemic", "pandemic", "icmr",
+      "aiims", "outbreak", "mortality", "surgery"],
     partial: ["health ministry", "hospital", "mental health", "drug approval",
-              "clinical trial", "death toll", "disease outbreak", "public health"],
+      "clinical trial", "death toll", "disease outbreak", "public health"],
   },
   {
     label: "Climate",
-    exact:   ["flood", "floods", "drought", "wildfire", "hurricane", "cyclone",
-              "heatwave", "earthquake", "tsunami", "monsoon", "co2",
-              "deforestation", "pollution"],
+    exact: ["flood", "floods", "drought", "wildfire", "hurricane", "cyclone",
+      "heatwave", "earthquake", "tsunami", "monsoon", "co2",
+      "deforestation", "pollution"],
     partial: ["climate change", "global warming", "net zero", "carbon emission",
-              "renewable energy", "sea level", "fossil fuel", "green energy",
-              "temperature record", "heat wave"],
+      "renewable energy", "sea level", "fossil fuel", "green energy",
+      "temperature record", "heat wave"],
   },
   {
     label: "Entertainment",
-    exact:   ["film", "movie", "cinema", "actor", "actress", "director",
-              "album", "concert", "oscar", "grammy", "bollywood", "kollywood",
-              "hollywood", "netflix", "hotstar", "celebrity", "ott"],
+    exact: ["film", "movie", "cinema", "actor", "actress", "director",
+      "album", "concert", "oscar", "grammy", "bollywood", "kollywood",
+      "hollywood", "netflix", "hotstar", "celebrity", "ott"],
     partial: ["box office", "trailer release", "amazon prime", "music video",
-              "award show", "film festival", "theatre release"],
+      "award show", "film festival", "theatre release"],
   },
   {
     label: "World",
-    exact:   ["china", "usa", "europe", "france", "germany", "japan",
-              "pakistan", "bangladesh", "myanmar", "africa", "brazil",
-              "canada", "australia", "g20", "g7", "imf", "diplomacy",
-              "sanctions", "ambassador", "treaty"],
+    exact: ["china", "usa", "europe", "france", "germany", "japan",
+      "pakistan", "bangladesh", "myanmar", "africa", "brazil",
+      "canada", "australia", "g20", "g7", "imf", "diplomacy",
+      "sanctions", "ambassador", "treaty"],
     partial: ["united nations", "foreign minister", "bilateral talks",
-              "world bank", "sri lanka", "south asia"],
+      "world bank", "sri lanka", "south asia"],
   },
 ];
 
@@ -319,10 +349,21 @@ async function getFeed(feedKey) {
 
   console.log(`[feed] Fetching fresh articles for "${feedKey}"`);
   const feedList = FEEDS[feedKey];
-  const results = await Promise.all(feedList.map(parseFeed));
-  const articles = dedupe(results.flat().filter(within24h)).sort(
-    (a, b) => new Date(b.pubDate) - new Date(a.pubDate)
-  );
+  const results = await Promise.allSettled(feedList.map(async (feed) => {
+    try {
+      const articles = await parseFeed(feed);
+      console.log(`[feed] ✅ ${feed.source} — ${articles.length} articles`);
+      return articles;
+    } catch (err) {
+      console.error(`[feed] ❌ ${feed.source} — ${err.message}`);
+      return []; // don't crash the whole pipeline
+    }
+  }));
+
+  const articles = dedupe(
+    results.flatMap(r => r.status === "fulfilled" ? r.value : [])
+      .filter(within24h)
+  ).sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
 
   const labeled = await labelWithGemini(articles);
   writeCache(feedKey, labeled);
