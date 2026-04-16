@@ -507,7 +507,7 @@ app.get("/news/summary/:feedKey", async (req, res) => {
     await getFeed(feedKey);
 
     // small delay safety
-    
+   
 
     const summary = await generateSummary(feedKey);
 
