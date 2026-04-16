@@ -14,6 +14,7 @@ app.use(cors());
 const CACHE_DIR = path.join(__dirname, ".cache");
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 
+
 if (!fs.existsSync(CACHE_DIR)) fs.mkdirSync(CACHE_DIR);
 
 const FEEDS = {
@@ -25,13 +26,43 @@ const FEEDS = {
     },
   ],
   tamilNadu: [
+    // ── State-level feeds ────────────────────────────────────────────────────
+    {
+      url: "https://www.thehindu.com/news/national/tamil-nadu/feeder/default.rss",
+      source: "The Hindu",
+    },
     {
       url: "https://news.google.com/rss/search?q=tamil+nadu&hl=en-IN&gl=IN&ceid=IN:en",
       source: "Google News",
     },
     {
-      url: "https://www.thehindu.com/news/national/tamil-nadu/feeder/default.rss",
-      source: "The Hindu",
+      url: "https://www.thenewsminute.com/feed",
+      source: "The News Minute",
+    },
+    {
+      url: "https://www.newindianexpress.com/state/tamil-nadu/feed",
+      source: "New Indian Express",
+    },
+    // ── City / Regional feeds ────────────────────────────────────────────────
+    {
+      url: "https://news.google.com/rss/search?q=chennai+news&hl=en-IN&gl=IN&ceid=IN:en",
+      source: "Google News · Chennai",
+    },
+    {
+      url: "https://news.google.com/rss/search?q=coimbatore+news&hl=en-IN&gl=IN&ceid=IN:en",
+      source: "Google News · Coimbatore",
+    },
+    {
+      url: "https://news.google.com/rss/search?q=madurai+news&hl=en-IN&gl=IN&ceid=IN:en",
+      source: "Google News · Madurai",
+    },
+    {
+      url: "https://news.google.com/rss/search?q=trichy+news&hl=en-IN&gl=IN&ceid=IN:en",
+      source: "Google News · Trichy",
+    },
+    {
+      url: "https://news.google.com/rss/search?q=salem+tamil+nadu+news&hl=en-IN&gl=IN&ceid=IN:en",
+      source: "Google News · Salem",
     },
   ],
 };
@@ -41,108 +72,105 @@ const VALID_LABELS = [
   "Crime", "Entertainment", "Health", "Climate", "World", "Conflict",
 ];
 
-// ── keyword fallback labeling ─────────────────────────────────────────────────
-// Used when Gemini is unavailable or fails. Covers common patterns well.
+const feedLocks = {};
+const summaryLocks = {};
 
-// Each rule has `exact` (whole-word match) and `partial` (substring ok) keyword lists.
-// Priority order matters — first match wins. Politics before Sports to avoid
-// "polls" / "party" / "league" misfires.
 const KEYWORD_RULES = [
   {
     label: "Politics",
-    exact:   ["election", "elections", "vote", "votes", "voting", "campaign",
-              "parliament", "minister", "government", "president", "manifesto",
-              "dmk", "aiadmk", "bjp", "congress", "modi", "trump", "biden",
-              "harris", "lok sabha", "rajya sabha", "mla", "mp", "constituency",
-              "candidate", "candidates", "polling", "rally", "cabinet",
-              "opposition", "ruling party", "by-election", "governor",
-              "senate", "referendum", "ballot", "incumbent", "tvk", "edappadi",
-              "palaniswami", "kanimozhi", "stalin", "dravidian"],
+    exact: ["election", "elections", "vote", "votes", "voting", "campaign",
+      "parliament", "minister", "government", "president", "manifesto",
+      "dmk", "aiadmk", "bjp", "congress", "modi", "trump", "biden",
+      "harris", "lok sabha", "rajya sabha", "mla", "mp", "constituency",
+      "candidate", "candidates", "polling", "rally", "cabinet",
+      "opposition", "ruling party", "by-election", "governor",
+      "senate", "referendum", "ballot", "incumbent", "tvk", "edappadi",
+      "palaniswami", "kanimozhi", "stalin", "dravidian"],
     partial: ["prime minister", "chief minister", "political party", "poll result",
-              "election result", "votes cast", "campaigns for"],
+      "election result", "votes cast", "campaigns for"],
   },
   {
     label: "Conflict",
-    exact:   ["war", "wars", "missile", "missiles", "bomb", "bombs", "airstrike",
-              "airstrikes", "troops", "soldier", "soldiers", "ceasefire",
-              "hostage", "hamas", "hezbollah", "ukraine", "russia", "gaza",
-              "israel", "iran", "nato", "artillery", "invasion", "shelling",
-              "casualties", "idf", "irgc", "frontline"],
+    exact: ["war", "wars", "missile", "missiles", "bomb", "bombs", "airstrike",
+      "airstrikes", "troops", "soldier", "soldiers", "ceasefire",
+      "hostage", "hamas", "hezbollah", "ukraine", "russia", "gaza",
+      "israel", "iran", "nato", "artillery", "invasion", "shelling",
+      "casualties", "idf", "irgc", "frontline"],
     partial: ["military operation", "armed forces", "terror attack", "suicide bomb",
-              "rocket fire", "ground offensive"],
+      "rocket fire", "ground offensive"],
   },
   {
     label: "Sports",
-    exact:   ["cricket", "ipl", "t20", "odi", "bcci", "football", "fifa",
-              "tennis", "wimbledon", "olympic", "olympics", "nba", "nfl",
-              "golf", "boxing", "ufc", "wicket", "batting", "bowling",
-              "wickets", "innings", "over", "penalty", "goalkeeper", "striker"],
+    exact: ["cricket", "ipl", "t20", "odi", "bcci", "football", "fifa",
+      "tennis", "wimbledon", "olympic", "olympics", "nba", "nfl",
+      "golf", "boxing", "ufc", "wicket", "batting", "bowling",
+      "wickets", "innings", "over", "penalty", "goalkeeper", "striker"],
     partial: ["premier league", "champions league", "la liga", "formula 1",
-              "grand prix", "series win", "world cup", "test match",
-              "match preview", "match report", "transfer window", "signed for",
-              "sports news", "ipl 2025", "ipl 2026"],
+      "grand prix", "series win", "world cup", "test match",
+      "match preview", "match report", "transfer window", "signed for",
+      "sports news", "ipl 2025", "ipl 2026"],
   },
   {
     label: "Technology",
-    exact:   ["ai", "openai", "chatgpt", "gemini", "gpt", "nvidia", "iphone",
-              "android", "5g", "semiconductor", "cybersecurity", "algorithm",
-              "smartphone", "laptop", "robot", "robotics", "satellite", "drone",
-              "drones", "spacex", "tesla", "microsoft", "apple", "google",
-              "meta", "software", "hardware", "startup", "startups"],
+    exact: ["ai", "openai", "chatgpt", "gemini", "gpt", "nvidia", "iphone",
+      "android", "5g", "semiconductor", "cybersecurity", "algorithm",
+      "smartphone", "laptop", "robot", "robotics", "satellite", "drone",
+      "drones", "spacex", "tesla", "microsoft", "apple", "google",
+      "meta", "software", "hardware", "startup", "startups"],
     partial: ["artificial intelligence", "machine learning", "data breach",
-              "electric vehicle", "tech company", "tech giant", "cloud computing",
-              "quantum computing", "generative ai"],
+      "electric vehicle", "tech company", "tech giant", "cloud computing",
+      "quantum computing", "generative ai"],
   },
   {
     label: "Business",
-    exact:   ["gdp", "rupee", "inflation", "rbi", "sebi", "ipo", "merger",
-              "acquisition", "tariff", "tariffs", "recession", "nse", "bse",
-              "sensex", "nifty", "budget", "revenue", "profit", "earnings"],
+    exact: ["gdp", "rupee", "inflation", "rbi", "sebi", "ipo", "merger",
+      "acquisition", "tariff", "tariffs", "recession", "nse", "bse",
+      "sensex", "nifty", "budget", "revenue", "profit", "earnings"],
     partial: ["stock market", "interest rate", "trade deficit", "economic growth",
-              "fiscal policy", "foreign investment", "market cap", "quarterly results",
-              "world bank", "imf loan"],
+      "fiscal policy", "foreign investment", "market cap", "quarterly results",
+      "world bank", "imf loan"],
   },
   {
     label: "Crime",
-    exact:   ["arrested", "murder", "robbery", "fraud", "accused", "verdict",
-              "convicted", "jail", "prison", "fir", "cbi", "cid", "smuggling",
-              "kidnap", "kidnapped", "assault", "rape", "detained", "custody",
-              "bail", "chargesheet", "trafficking"],
+    exact: ["arrested", "murder", "robbery", "fraud", "accused", "verdict",
+      "convicted", "jail", "prison", "fir", "cbi", "cid", "smuggling",
+      "kidnap", "kidnapped", "assault", "rape", "detained", "custody",
+      "bail", "chargesheet", "trafficking"],
     partial: ["police arrest", "under investigation", "drug bust", "gang war",
-              "court hearing", "sentenced to", "filed case"],
+      "court hearing", "sentenced to", "filed case"],
   },
   {
     label: "Health",
-    exact:   ["vaccine", "cancer", "diabetes", "epidemic", "pandemic", "icmr",
-              "aiims", "outbreak", "mortality", "surgery"],
+    exact: ["vaccine", "cancer", "diabetes", "epidemic", "pandemic", "icmr",
+      "aiims", "outbreak", "mortality", "surgery"],
     partial: ["health ministry", "hospital", "mental health", "drug approval",
-              "clinical trial", "death toll", "disease outbreak", "public health"],
+      "clinical trial", "death toll", "disease outbreak", "public health"],
   },
   {
     label: "Climate",
-    exact:   ["flood", "floods", "drought", "wildfire", "hurricane", "cyclone",
-              "heatwave", "earthquake", "tsunami", "monsoon", "co2",
-              "deforestation", "pollution"],
+    exact: ["flood", "floods", "drought", "wildfire", "hurricane", "cyclone",
+      "heatwave", "earthquake", "tsunami", "monsoon", "co2",
+      "deforestation", "pollution"],
     partial: ["climate change", "global warming", "net zero", "carbon emission",
-              "renewable energy", "sea level", "fossil fuel", "green energy",
-              "temperature record", "heat wave"],
+      "renewable energy", "sea level", "fossil fuel", "green energy",
+      "temperature record", "heat wave"],
   },
   {
     label: "Entertainment",
-    exact:   ["film", "movie", "cinema", "actor", "actress", "director",
-              "album", "concert", "oscar", "grammy", "bollywood", "kollywood",
-              "hollywood", "netflix", "hotstar", "celebrity", "ott"],
+    exact: ["film", "movie", "cinema", "actor", "actress", "director",
+      "album", "concert", "oscar", "grammy", "bollywood", "kollywood",
+      "hollywood", "netflix", "hotstar", "celebrity", "ott"],
     partial: ["box office", "trailer release", "amazon prime", "music video",
-              "award show", "film festival", "theatre release"],
+      "award show", "film festival", "theatre release"],
   },
   {
     label: "World",
-    exact:   ["china", "usa", "europe", "france", "germany", "japan",
-              "pakistan", "bangladesh", "myanmar", "africa", "brazil",
-              "canada", "australia", "g20", "g7", "imf", "diplomacy",
-              "sanctions", "ambassador", "treaty"],
+    exact: ["china", "usa", "europe", "france", "germany", "japan",
+      "pakistan", "bangladesh", "myanmar", "africa", "brazil",
+      "canada", "australia", "g20", "g7", "imf", "diplomacy",
+      "sanctions", "ambassador", "treaty"],
     partial: ["united nations", "foreign minister", "bilateral talks",
-              "world bank", "sri lanka", "south asia"],
+      "world bank", "sri lanka", "south asia"],
   },
 ];
 
@@ -235,98 +263,59 @@ function within24h(item) {
 
 // ── Gemini labeling ───────────────────────────────────────────────────────────
 
-async function labelWithGemini(articles) {
-  const apiKey = process.env.GEMINI_API_KEY;
-
-  if (!apiKey) {
-    console.warn("[label] No GEMINI_API_KEY — using keyword fallback");
-    return articles.map((a) => ({ ...a, label: keywordLabel(a.title) }));
-  }
-
-  // Free tier: 15 req/min, 1M tokens/min. 150 articles/batch keeps it to 1 call per feed.
-  const BATCH = 150;
-  const DELAY_MS = 5000; // 5s between batches — well within 15 req/min
-  const labeled = [];
-
-  for (let i = 0; i < articles.length; i += BATCH) {
-    if (i > 0) {
-      console.log(`[label] Waiting ${DELAY_MS / 1000}s before next batch...`);
-      await new Promise((r) => setTimeout(r, DELAY_MS));
-    }
-    const batch = articles.slice(i, i + BATCH);
-    const titlesJson = JSON.stringify(
-      batch.map((a, idx) => ({ idx, title: a.title }))
-    );
-
-    const prompt = `You are a news categoriser. Assign each article title exactly one label from this list:
-${VALID_LABELS.join(", ")}
-
-Rules:
-- Return ONLY a valid JSON array. No markdown, no explanation, no code fences.
-- Array length must equal input length, preserving order.
-- Each element: { "idx": <number>, "label": "<label>" }
-- Never invent new labels. If unsure, pick the closest match.
-
-Titles:
-${titlesJson}`;
-
-    try {
-      const res = await axios.post(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
-        {
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0 },
-        },
-        { timeout: 30000 }
-      );
-
-      const raw = res.data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "[]";
-      const clean = raw
-        .replace(/^```json\s*/i, "")
-        .replace(/^```\s*/i, "")
-        .replace(/```$/, "")
-        .trim();
-      const parsed = JSON.parse(clean);
-
-      batch.forEach((article, j) => {
-        const match = parsed.find((p) => p.idx === j);
-        const geminiLabel = match && VALID_LABELS.includes(match.label) ? match.label : null;
-        labeled.push({
-          ...article,
-          // If Gemini label invalid, fall back to keyword label
-          label: geminiLabel || keywordLabel(article.title),
-        });
-      });
-
-      console.log(`[label] Gemini labeled batch ${i / BATCH + 1} (${batch.length} articles)`);
-    } catch (err) {
-      console.error(`[label] Gemini batch failed, using keyword fallback:`, err.message);
-      // Keyword fallback per article — never "News" for everything
-      batch.forEach((article) =>
-        labeled.push({ ...article, label: keywordLabel(article.title) })
-      );
-    }
-  }
-
-  return labeled;
+function labelArticles(articles) {
+  return articles.map((a) => ({ ...a, label: keywordLabel(a.title) }));
 }
 
 // ── core pipeline ─────────────────────────────────────────────────────────────
-
 async function getFeed(feedKey) {
-  const cached = readCache(feedKey);
-  if (cached) return cached;
 
-  console.log(`[feed] Fetching fresh articles for "${feedKey}"`);
-  const feedList = FEEDS[feedKey];
-  const results = await Promise.all(feedList.map(parseFeed));
-  const articles = dedupe(results.flat().filter(within24h)).sort(
-    (a, b) => new Date(b.pubDate) - new Date(a.pubDate)
-  );
+  // If already running, wait for same job
+  if (feedLocks[feedKey]) {
+    console.log(`[feed] WAITING existing job for "${feedKey}"`);
+    return feedLocks[feedKey];
+  }
 
-  const labeled = await labelWithGemini(articles);
-  writeCache(feedKey, labeled);
-  return labeled;
+  feedLocks[feedKey] = (async () => {
+
+    const cached = readCache(feedKey);
+    if (cached) return cached;
+
+    console.log(`[feed] Fetching fresh articles for "${feedKey}"`);
+
+    const feedList = FEEDS[feedKey];
+
+    const results = await Promise.allSettled(
+      feedList.map(async (feed) => {
+        try {
+          const articles = await parseFeed(feed);
+          console.log(`[feed] ✅ ${feed.source} — ${articles.length} articles`);
+          return articles;
+        } catch (err) {
+          console.error(`[feed] ❌ ${feed.source} — ${err.message}`);
+          return [];
+        }
+      })
+    );
+
+    const articles = dedupe(
+      results
+        .flatMap((r) => (r.status === "fulfilled" ? r.value : []))
+        .filter(within24h)
+    ).sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
+
+   const labeled = labelArticles(articles);
+
+    writeCache(feedKey, labeled);
+
+    return labeled;
+  })();
+
+  try {
+    return await feedLocks[feedKey];
+  } finally {
+    delete feedLocks[feedKey];
+  }
 }
 
 // ── routes ────────────────────────────────────────────────────────────────────
@@ -355,5 +344,193 @@ app.delete("/cache/:feedKey", (req, res) => {
   if (fs.existsSync(cachePath)) fs.unlinkSync(cachePath);
   res.json({ ok: true, message: `Cache cleared for "${req.params.feedKey}"` });
 });
+
+async function generateSummary(feedKey) {
+  // Re-use cached feed articles — no extra RSS fetch
+  const cached = readCache(feedKey);
+  const articles = cached || [];
+
+  if (articles.length === 0) {
+    return { generatedAt: new Date().toISOString(), items: [] };
+  }
+
+  const apiKey = process.env.GEMINI_API_KEY;
+
+  // Build a compact list for Gemini — title + source + label
+  const inputList = articles.slice(0, 80).map((a, idx) => ({
+    idx,
+    title: a.title,
+    source: a.source,
+    label: a.label || "World",
+  }));
+
+  const feedLabel = feedKey === "tamilNadu" ? "Tamil Nadu" : "International";
+
+  const prompt = `You are a senior news editor creating a daily briefing for ${feedLabel} news.
+ 
+From the articles below, select the 10 most important, diverse, and newsworthy stories of the day.
+Avoid picking multiple articles about the exact same event — prefer variety across topics.
+ 
+For each selected article write:
+- A short punchy headline (max 12 words, rewritten in your own words — not copied)
+- A 2-sentence plain-English brief explaining what happened and why it matters
+- The label category it belongs to
+ 
+Return ONLY valid JSON array, no markdown, no explanation:
+[
+  {
+    "rank": 1,
+    "originalIdx": <number from input>,
+    "headline": "<your rewritten headline>",
+    "brief": "<2-sentence brief>",
+    "label": "<label>",
+    "source": "<source from input>"
+  },
+  ...
+]
+ 
+Articles:
+${JSON.stringify(inputList)}`;
+
+  try {
+    const res = await axios.post(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+      {
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { temperature: 0.4 },
+      },
+      { timeout: 45000 }
+    );
+
+    const raw = res.data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "[]";
+    const clean = raw
+      .replace(/^```json\s*/i, "")
+      .replace(/^```\s*/i, "")
+      .replace(/```$/, "")
+      .trim();
+
+    const parsed = JSON.parse(clean);
+
+    // Attach original link + pubDate from the source article
+    const enriched = parsed.map((item) => {
+      const original = articles[item.originalIdx] || {};
+      return {
+        rank: item.rank,
+        headline: item.headline,
+        brief: item.brief,
+        label: VALID_LABELS.includes(item.label) ? item.label : "World",
+        source: item.source || original.source,
+        link: original.link || null,
+        pubDate: original.pubDate || null,
+      };
+    });
+
+    console.log(`[summary] ✅ Generated Top 10 for "${feedKey}"`);
+    return {
+      generatedAt: new Date().toISOString(),
+      feedKey,
+      items: enriched,
+    };
+  } catch (err) {
+    console.error(`[summary] ❌ Gemini failed:`, err.message);
+    // Fallback: just return top 10 articles as-is with no brief
+    return {
+      generatedAt: new Date().toISOString(),
+      feedKey,
+      fallback: true,
+      items: articles.slice(0, 10).map((a, i) => ({
+        rank: i + 1,
+        headline: a.title,
+        brief: null,
+        label: a.label || "World",
+        source: a.source,
+        link: a.link,
+        pubDate: a.pubDate,
+      })),
+    };
+  }
+}
+
+// ── 2. SUMMARY CACHE HELPERS (add after generateSummary) ─────────────────────
+
+function getSummaryCachePath(feedKey) {
+  return path.join(CACHE_DIR, `summary-${feedKey}.json`);
+}
+
+function readSummaryCache(feedKey) {
+  const p = getSummaryCachePath(feedKey);
+  if (!fs.existsSync(p)) return null;
+  try {
+    const raw = JSON.parse(fs.readFileSync(p, "utf8"));
+    const age = Date.now() - new Date(raw.generatedAt).getTime();
+    if (age < CACHE_TTL_MS) {
+      console.log(`[summary] Cache HIT for "${feedKey}" — ${Math.round(age / 60000)}m old`);
+      return raw;
+    }
+    console.log(`[summary] Cache STALE for "${feedKey}" — regenerating`);
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function writeSummaryCache(feedKey, summary) {
+  fs.writeFileSync(
+    getSummaryCachePath(feedKey),
+    JSON.stringify(summary, null, 2),
+    "utf8"
+  );
+  console.log(`[summary] Cache WRITTEN for "${feedKey}"`);
+}
+
+// ── 3. SUMMARY ROUTE (add alongside your other app.get routes) ───────────────
+
+app.get("/news/summary/:feedKey", async (req, res) => {
+  const { feedKey } = req.params;
+
+  if (!FEEDS[feedKey]) {
+    return res.status(404).json({ error: `Unknown feedKey: ${feedKey}` });
+  }
+
+  // If summary already generating → wait
+  if (summaryLocks[feedKey]) {
+    console.log(`[summary] WAITING existing summary job`);
+    return res.json(await summaryLocks[feedKey]);
+  }
+
+  summaryLocks[feedKey] = (async () => {
+
+    const cached = readSummaryCache(feedKey);
+    if (cached) return cached;
+
+    // Ensure feed exists
+    await getFeed(feedKey);
+
+    // small delay safety
+    
+
+    const summary = await generateSummary(feedKey);
+
+    writeSummaryCache(feedKey, summary);
+
+    return summary;
+
+  })();
+
+  try {
+    res.json(await summaryLocks[feedKey]);
+  } catch (err) {
+    console.error("[summary] Route error:", err.message);
+    res.status(500).json({ error: "Failed to generate summary" });
+  } finally {
+    delete summaryLocks[feedKey];
+  }
+});
+
+setTimeout(() => {
+  console.log("[warmup] Preloading feeds...");
+  getFeed("international");
+  getFeed("tamilNadu");
+}, 10000);
 
 app.listen(5000, () => console.log("Server running on port 5000"));
