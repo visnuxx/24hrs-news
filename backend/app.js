@@ -14,7 +14,6 @@ app.use(cors());
 const CACHE_DIR = path.join(__dirname, ".cache");
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 
-
 if (!fs.existsSync(CACHE_DIR)) fs.mkdirSync(CACHE_DIR);
 
 const FEEDS = {
@@ -26,7 +25,6 @@ const FEEDS = {
     },
   ],
   tamilNadu: [
-    // ── State-level feeds ────────────────────────────────────────────────────
     {
       url: "https://www.thehindu.com/news/national/tamil-nadu/feeder/default.rss",
       source: "The Hindu",
@@ -39,11 +37,6 @@ const FEEDS = {
       url: "https://www.thenewsminute.com/feed",
       source: "The News Minute",
     },
-    {
-      url: "https://www.newindianexpress.com/state/tamil-nadu/feed",
-      source: "New Indian Express",
-    },
-    // ── City / Regional feeds ────────────────────────────────────────────────
     {
       url: "https://news.google.com/rss/search?q=chennai+news&hl=en-IN&gl=IN&ceid=IN:en",
       source: "Google News · Chennai",
@@ -63,6 +56,28 @@ const FEEDS = {
     {
       url: "https://news.google.com/rss/search?q=salem+tamil+nadu+news&hl=en-IN&gl=IN&ceid=IN:en",
       source: "Google News · Salem",
+    },
+  ],
+  tamil: [
+    {
+      url: "https://rss.dinamalar.com/tamilnadunews.asp",
+      source: "Dinamalar",
+    },
+    {
+      url: "https://rss.dinamalar.com/?cat=ara1",
+      source: "Dinamalar · அரசியல்",
+    },
+    {
+      url: "https://www.vikatan.com/rss",
+      source: "Vikatan",
+    },
+    {
+      url: "https://news.google.com/rss/search?q=தமிழ்நாடு&hl=ta&gl=IN&ceid=IN:ta",
+      source: "Google News · தமிழ்",
+    },
+    {
+      url: "https://news.google.com/rss/search?q=சென்னை&hl=ta&gl=IN&ceid=IN:ta",
+      source: "Google News · சென்னை",
     },
   ],
 };
@@ -85,7 +100,9 @@ const KEYWORD_RULES = [
       "candidate", "candidates", "polling", "rally", "cabinet",
       "opposition", "ruling party", "by-election", "governor",
       "senate", "referendum", "ballot", "incumbent", "tvk", "edappadi",
-      "palaniswami", "kanimozhi", "stalin", "dravidian"],
+      "palaniswami", "kanimozhi", "stalin", "dravidian",
+      // Tamil keywords
+      "தேர்தல்", "வாக்கு", "அரசு", "அமைச்சர்", "முதலமைச்சர்", "ஆளுநர்"],
     partial: ["prime minister", "chief minister", "political party", "poll result",
       "election result", "votes cast", "campaigns for"],
   },
@@ -95,7 +112,8 @@ const KEYWORD_RULES = [
       "airstrikes", "troops", "soldier", "soldiers", "ceasefire",
       "hostage", "hamas", "hezbollah", "ukraine", "russia", "gaza",
       "israel", "iran", "nato", "artillery", "invasion", "shelling",
-      "casualties", "idf", "irgc", "frontline"],
+      "casualties", "idf", "irgc", "frontline",
+      "போர்", "தாக்குதல்", "படைகள்"],
     partial: ["military operation", "armed forces", "terror attack", "suicide bomb",
       "rocket fire", "ground offensive"],
   },
@@ -104,7 +122,8 @@ const KEYWORD_RULES = [
     exact: ["cricket", "ipl", "t20", "odi", "bcci", "football", "fifa",
       "tennis", "wimbledon", "olympic", "olympics", "nba", "nfl",
       "golf", "boxing", "ufc", "wicket", "batting", "bowling",
-      "wickets", "innings", "over", "penalty", "goalkeeper", "striker"],
+      "wickets", "innings", "over", "penalty", "goalkeeper", "striker",
+      "கிரிக்கெட்", "கால்பந்து", "விளையாட்டு", "ஒலிம்பிக்"],
     partial: ["premier league", "champions league", "la liga", "formula 1",
       "grand prix", "series win", "world cup", "test match",
       "match preview", "match report", "transfer window", "signed for",
@@ -116,7 +135,8 @@ const KEYWORD_RULES = [
       "android", "5g", "semiconductor", "cybersecurity", "algorithm",
       "smartphone", "laptop", "robot", "robotics", "satellite", "drone",
       "drones", "spacex", "tesla", "microsoft", "apple", "google",
-      "meta", "software", "hardware", "startup", "startups"],
+      "meta", "software", "hardware", "startup", "startups",
+      "தொழில்நுட்பம்", "செயற்கை நுண்ணறிவு"],
     partial: ["artificial intelligence", "machine learning", "data breach",
       "electric vehicle", "tech company", "tech giant", "cloud computing",
       "quantum computing", "generative ai"],
@@ -125,7 +145,8 @@ const KEYWORD_RULES = [
     label: "Business",
     exact: ["gdp", "rupee", "inflation", "rbi", "sebi", "ipo", "merger",
       "acquisition", "tariff", "tariffs", "recession", "nse", "bse",
-      "sensex", "nifty", "budget", "revenue", "profit", "earnings"],
+      "sensex", "nifty", "budget", "revenue", "profit", "earnings",
+      "வணிகம்", "பொருளாதாரம்", "பங்குச்சந்தை"],
     partial: ["stock market", "interest rate", "trade deficit", "economic growth",
       "fiscal policy", "foreign investment", "market cap", "quarterly results",
       "world bank", "imf loan"],
@@ -135,14 +156,16 @@ const KEYWORD_RULES = [
     exact: ["arrested", "murder", "robbery", "fraud", "accused", "verdict",
       "convicted", "jail", "prison", "fir", "cbi", "cid", "smuggling",
       "kidnap", "kidnapped", "assault", "rape", "detained", "custody",
-      "bail", "chargesheet", "trafficking"],
+      "bail", "chargesheet", "trafficking",
+      "கைது", "கொலை", "திருட்டு", "மோசடி", "சிறை"],
     partial: ["police arrest", "under investigation", "drug bust", "gang war",
       "court hearing", "sentenced to", "filed case"],
   },
   {
     label: "Health",
     exact: ["vaccine", "cancer", "diabetes", "epidemic", "pandemic", "icmr",
-      "aiims", "outbreak", "mortality", "surgery"],
+      "aiims", "outbreak", "mortality", "surgery",
+      "உடல்நலம்", "மருத்துவம்", "நோய்", "மருந்து"],
     partial: ["health ministry", "hospital", "mental health", "drug approval",
       "clinical trial", "death toll", "disease outbreak", "public health"],
   },
@@ -150,7 +173,8 @@ const KEYWORD_RULES = [
     label: "Climate",
     exact: ["flood", "floods", "drought", "wildfire", "hurricane", "cyclone",
       "heatwave", "earthquake", "tsunami", "monsoon", "co2",
-      "deforestation", "pollution"],
+      "deforestation", "pollution",
+      "வெள்ளம்", "வறட்சி", "புயல்", "நிலநடுக்கம்", "மழை"],
     partial: ["climate change", "global warming", "net zero", "carbon emission",
       "renewable energy", "sea level", "fossil fuel", "green energy",
       "temperature record", "heat wave"],
@@ -159,7 +183,8 @@ const KEYWORD_RULES = [
     label: "Entertainment",
     exact: ["film", "movie", "cinema", "actor", "actress", "director",
       "album", "concert", "oscar", "grammy", "bollywood", "kollywood",
-      "hollywood", "netflix", "hotstar", "celebrity", "ott"],
+      "hollywood", "netflix", "hotstar", "celebrity", "ott",
+      "திரைப்படம்", "சினிமா", "நடிகர்", "நடிகை", "இசை", "பாடல்"],
     partial: ["box office", "trailer release", "amazon prime", "music video",
       "award show", "film festival", "theatre release"],
   },
@@ -168,25 +193,23 @@ const KEYWORD_RULES = [
     exact: ["china", "usa", "europe", "france", "germany", "japan",
       "pakistan", "bangladesh", "myanmar", "africa", "brazil",
       "canada", "australia", "g20", "g7", "imf", "diplomacy",
-      "sanctions", "ambassador", "treaty"],
+      "sanctions", "ambassador", "treaty",
+      "உலகம்", "சீனா", "அமெரிக்கா", "ஐரோப்பா"],
     partial: ["united nations", "foreign minister", "bilateral talks",
       "world bank", "sri lanka", "south asia"],
   },
 ];
 
 function keywordLabel(title) {
-  // Pad with spaces so word-boundary checks work at start/end of string
   const text = " " + title.toLowerCase() + " ";
 
   for (const rule of KEYWORD_RULES) {
-    // Exact: keyword must be surrounded by non-alphanumeric chars
     const exactHit = rule.exact.some((kw) => {
       const re = new RegExp(`(?<![a-z0-9])${kw.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![a-z0-9])`, "i");
       return re.test(text);
     });
     if (exactHit) return rule.label;
 
-    // Partial: plain substring match (used for multi-word phrases that are unambiguous)
     const partialHit = rule.partial.some((kw) => text.includes(kw));
     if (partialHit) return rule.label;
   }
@@ -261,23 +284,19 @@ function within24h(item) {
   return Date.now() - new Date(item.pubDate) < CACHE_TTL_MS;
 }
 
-// ── Gemini labeling ───────────────────────────────────────────────────────────
-
 function labelArticles(articles) {
   return articles.map((a) => ({ ...a, label: keywordLabel(a.title) }));
 }
 
 // ── core pipeline ─────────────────────────────────────────────────────────────
-async function getFeed(feedKey) {
 
-  // If already running, wait for same job
+async function getFeed(feedKey) {
   if (feedLocks[feedKey]) {
     console.log(`[feed] WAITING existing job for "${feedKey}"`);
     return feedLocks[feedKey];
   }
 
   feedLocks[feedKey] = (async () => {
-
     const cached = readCache(feedKey);
     if (cached) return cached;
 
@@ -304,7 +323,7 @@ async function getFeed(feedKey) {
         .filter(within24h)
     ).sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
 
-   const labeled = labelArticles(articles);
+    const labeled = labelArticles(articles);
 
     writeCache(feedKey, labeled);
 
@@ -338,15 +357,24 @@ app.get("/news/tamil-nadu", async (req, res) => {
   }
 });
 
-// Force refresh: DELETE /cache/international  or  DELETE /cache/tamilNadu
+app.get("/news/tamil", async (req, res) => {
+  try {
+    res.json(await getFeed("tamil"));
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send("error fetching news");
+  }
+});
+
 app.delete("/cache/:feedKey", (req, res) => {
   const cachePath = getCachePath(req.params.feedKey);
   if (fs.existsSync(cachePath)) fs.unlinkSync(cachePath);
   res.json({ ok: true, message: `Cache cleared for "${req.params.feedKey}"` });
 });
 
+// ── summary helpers ───────────────────────────────────────────────────────────
+
 async function generateSummary(feedKey) {
-  // Re-use cached feed articles — no extra RSS fetch
   const cached = readCache(feedKey);
   const articles = cached || [];
 
@@ -356,7 +384,6 @@ async function generateSummary(feedKey) {
 
   const apiKey = process.env.GEMINI_API_KEY;
 
-  // Build a compact list for Gemini — title + source + label
   const inputList = articles.slice(0, 80).map((a, idx) => ({
     idx,
     title: a.title,
@@ -364,18 +391,21 @@ async function generateSummary(feedKey) {
     label: a.label || "World",
   }));
 
-  const feedLabel = feedKey === "tamilNadu" ? "Tamil Nadu" : "International";
+  const feedLabel =
+    feedKey === "tamilNadu" ? "Tamil Nadu" :
+    feedKey === "tamil" ? "Tamil language news from Tamil Nadu" :
+    "International";
 
   const prompt = `You are a senior news editor creating a daily briefing for ${feedLabel} news.
- 
+
 From the articles below, select the 10 most important, diverse, and newsworthy stories of the day.
 Avoid picking multiple articles about the exact same event — prefer variety across topics.
- 
+
 For each selected article write:
 - A short punchy headline (max 12 words, rewritten in your own words — not copied)
 - A 2-sentence plain-English brief explaining what happened and why it matters
 - The label category it belongs to
- 
+
 Return ONLY valid JSON array, no markdown, no explanation:
 [
   {
@@ -388,7 +418,7 @@ Return ONLY valid JSON array, no markdown, no explanation:
   },
   ...
 ]
- 
+
 Articles:
 ${JSON.stringify(inputList)}`;
 
@@ -411,7 +441,6 @@ ${JSON.stringify(inputList)}`;
 
     const parsed = JSON.parse(clean);
 
-    // Attach original link + pubDate from the source article
     const enriched = parsed.map((item) => {
       const original = articles[item.originalIdx] || {};
       return {
@@ -433,7 +462,6 @@ ${JSON.stringify(inputList)}`;
     };
   } catch (err) {
     console.error(`[summary] ❌ Gemini failed:`, err.message);
-    // Fallback: just return top 10 articles as-is with no brief
     return {
       generatedAt: new Date().toISOString(),
       feedKey,
@@ -450,8 +478,6 @@ ${JSON.stringify(inputList)}`;
     };
   }
 }
-
-// ── 2. SUMMARY CACHE HELPERS (add after generateSummary) ─────────────────────
 
 function getSummaryCachePath(feedKey) {
   return path.join(CACHE_DIR, `summary-${feedKey}.json`);
@@ -483,8 +509,6 @@ function writeSummaryCache(feedKey, summary) {
   console.log(`[summary] Cache WRITTEN for "${feedKey}"`);
 }
 
-// ── 3. SUMMARY ROUTE (add alongside your other app.get routes) ───────────────
-
 app.get("/news/summary/:feedKey", async (req, res) => {
   const { feedKey } = req.params;
 
@@ -492,29 +516,20 @@ app.get("/news/summary/:feedKey", async (req, res) => {
     return res.status(404).json({ error: `Unknown feedKey: ${feedKey}` });
   }
 
-  // If summary already generating → wait
   if (summaryLocks[feedKey]) {
     console.log(`[summary] WAITING existing summary job`);
     return res.json(await summaryLocks[feedKey]);
   }
 
   summaryLocks[feedKey] = (async () => {
-
     const cached = readSummaryCache(feedKey);
     if (cached) return cached;
 
-    // Ensure feed exists
     await getFeed(feedKey);
 
-    // small delay safety
-   
-
     const summary = await generateSummary(feedKey);
-
     writeSummaryCache(feedKey, summary);
-
     return summary;
-
   })();
 
   try {
@@ -531,6 +546,7 @@ setTimeout(() => {
   console.log("[warmup] Preloading feeds...");
   getFeed("international");
   getFeed("tamilNadu");
+  getFeed("tamil");
 }, 10000);
 
 app.listen(5000, () => console.log("Server running on port 5000"));
