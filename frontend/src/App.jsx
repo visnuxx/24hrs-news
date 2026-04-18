@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 
-const API_BASE = "https://two4hrs-news.onrender.com";
+const API_BASE = "http://localhost:5000";
 
 const FEEDS = [
   {
@@ -56,6 +56,11 @@ function timeAgo(dateStr) {
   if (diff < 3600) return Math.floor(diff / 60) + "m ago";
   if (diff < 86400) return Math.floor(diff / 3600) + "h ago";
   return Math.floor(diff / 86400) + "d ago";
+}
+
+function whatsappShare(title, link) {
+  const text = encodeURIComponent(`${title}\n${link}`);
+  window.open(`https://wa.me/?text=${text}`, "_blank");
 }
 
 function formatSummaryDate(isoString) {
@@ -256,7 +261,7 @@ export default function App() {
                 <div style={{ fontSize: 12, color: textTertiary, letterSpacing: 0.4, marginBottom: "1.25rem" }}>
                   GENERATING TODAY'S BRIEF...
                 </div>
-                {[1,2,3,4].map((i) => (
+                {[1, 2, 3, 4].map((i) => (
                   <div key={i} style={{ padding: "16px 0", borderBottom: "0.5px solid " + border }}>
                     <div style={{ height: 12, background: skel, borderRadius: 4, width: 30, marginBottom: 10 }} />
                     <div style={{ height: 15, background: skel, borderRadius: 4, width: "90%", marginBottom: 8 }} />
@@ -447,7 +452,7 @@ export default function App() {
             )}
 
             {/* Skeletons */}
-            {status === "loading" && [1,2,3,4,5].map((i) => (
+            {status === "loading" && [1, 2, 3, 4, 5].map((i) => (
               <div key={i} style={{ padding: "16px 0", borderBottom: "0.5px solid " + border }}>
                 <div style={{ height: 14, background: skel, borderRadius: 4, width: "85%", marginBottom: 8 }} />
                 <div style={{ height: 14, background: skel, borderRadius: 4, width: "60%", marginBottom: 10 }} />
@@ -492,16 +497,32 @@ export default function App() {
                   </div>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                      <span style={{ width: 20, height: 20, borderRadius: 4, background: currentFeed.bg, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 600, color: currentFeed.textColor }}>
+                      <span style={{ width: 18, height: 18, borderRadius: 4, background: currentFeed.bg, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 8, fontWeight: 600, color: currentFeed.textColor }}>
                         {initials(item.source)}
                       </span>
-                      <span style={{ fontSize: 12, color: textSecondary, fontWeight: 500 }}>{item.source}</span>
-                      <span style={{ color: border, fontSize: 11 }}>·</span>
-                      <span style={{ fontSize: 12, color: textTertiary }}>{timeAgo(item.pubDate)}</span>
+                      <span style={{ fontSize: 12, color: textSecondary }}>{item.source}</span>
+                      {item.pubDate && (
+                        <>
+                          <span style={{ color: border, fontSize: 11 }}>·</span>
+                          <span style={{ fontSize: 12, color: textTertiary }}>{timeAgo(item.pubDate)}</span>
+                        </>
+                      )}
                     </div>
-                    <a href={item.link} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, color: currentFeed.color, textDecoration: "none" }}>
-                      Read ↗
-                    </a>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      {item.link && (
+                        <button
+                          onClick={() => whatsappShare(item.headline, item.link)}
+                          style={{ fontSize: 12, color: "#25D366", background: "none", border: "none", cursor: "pointer", padding: 0, fontFamily: "inherit" }}
+                        >
+                          ↗ WhatsApp
+                        </button>
+                      )}
+                      {item.link && (
+                        <a href={item.link} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, color: currentFeed.color, textDecoration: "none" }}>
+                          Read ↗
+                        </a>
+                      )}
+                    </div>
                   </div>
                 </div>
               );
