@@ -79,6 +79,19 @@ const FEEDS = {
       url: "https://news.google.com/rss/search?q=சென்னை&hl=ta&gl=IN&ceid=IN:ta",
       source: "Google News · சென்னை",
     },
+
+    {
+      url: "https://tamil.oneindia.com/rss/feeds/tamilnadu-fb.xml",
+      source: "oneindia",
+    },
+    {
+      url: "https://tamil.news18.com/rss/tamil-nadu.xml",
+      source: "News18 Tamil Nadu",
+    },
+    {
+      url: "https://feeds.bbci.co.uk/tamil/rss.xml",
+      source: "BBC News Tamil",
+    },
   ],
 };
 
@@ -393,8 +406,8 @@ async function generateSummary(feedKey) {
 
   const feedLabel =
     feedKey === "tamilNadu" ? "Tamil Nadu" :
-    feedKey === "tamil" ? "Tamil language news from Tamil Nadu" :
-    "International";
+      feedKey === "tamil" ? "Tamil language news from Tamil Nadu" :
+        "International";
 
   const prompt = `You are a senior news editor creating a daily briefing for ${feedLabel} news.
 
