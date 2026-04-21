@@ -97,7 +97,7 @@ globalStyle.textContent = `
 document.head.appendChild(globalStyle);
 
 // ---------- Constants ----------
-const API_BASE = "http://localhost:5000";
+const API_BASE = "https://two4hrs-news.onrender.com";
 
 const FEEDS = [
   { key:"tamil-nadu",    label:"Tamil Nadu",    taLabel:"தமிழ்நாடு", endpoint:"/news/tamil-nadu",    summaryKey:"tamilNadu",     accent:"#1D9E75", fill:"#E1F5EE", ink:"#085041" },
@@ -208,19 +208,30 @@ const SourceAvatar = ({ src, feed, size = 22 }) => (
 );
 
 // ---------- Thumbnail ----------
-const Thumb = ({ label, dark, mode = "banner", height = 140, size = 76 }) => {
+const Thumb = ({ label, dark, image, mode = "banner", height = 140, size = 76 }) => {
   const cat = getCat(label);
   const bg  = dark ? cat.darkBg : cat.bg;
+  const [imgErr, setImgErr] = useState(false);
+  const showImg = image && !imgErr;
+
   if (mode === "square") {
     return (
-      <div style={{ width:size, height:size, borderRadius:10, background:bg, display:"flex", alignItems:"center", justifyContent:"center", fontSize:size * 0.38, flexShrink:0 }}>
-        {cat.icon}
+      <div style={{ width:size, height:size, borderRadius:10, background:bg, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, overflow:"hidden", position:"relative" }}>
+        {showImg
+          ? <img src={image} alt="" onError={() => setImgErr(true)}
+              style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} />
+          : <span style={{ fontSize:size * 0.38 }}>{cat.icon}</span>
+        }
       </div>
     );
   }
   return (
-    <div style={{ width:"100%", height, background:bg, display:"flex", alignItems:"center", justifyContent:"center", fontSize:44, flexShrink:0 }}>
-      {cat.icon}
+    <div style={{ width:"100%", height, background:bg, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, overflow:"hidden", position:"relative" }}>
+      {showImg
+        ? <img src={image} alt="" onError={() => setImgErr(true)}
+            style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} />
+        : <span style={{ fontSize:44 }}>{cat.icon}</span>
+      }
     </div>
   );
 };
@@ -499,7 +510,7 @@ const NewsCard = ({ item, feed, t, dark, delay }) => {
         animationDelay:`${delay}s`,
       }}
     >
-      <Thumb label={label} dark={dark} mode="banner" height={140} />
+      <Thumb label={label} dark={dark} image={item.image} mode="banner" height={140} />
       <div style={{ padding:"14px 16px 16px", display:"flex", flexDirection:"column", flex:1 }}>
         <div style={{ marginBottom:9 }}>
           <CatBadge label={label} dark={dark} size="sm" />
@@ -563,7 +574,7 @@ const ListItem = ({ item, feed, t, dark, delay }) => {
         borderRadius:"var(--radius-sm)",
       }}
     >
-      <Thumb label={label} dark={dark} mode="square" size={76} />
+      <Thumb label={label} dark={dark} image={item.image} mode="square" size={76} />
       <div style={{ flex:1, minWidth:0 }}>
         <div style={{ marginBottom:6 }}>
           <CatBadge label={label} dark={dark} size="xs" />
@@ -606,6 +617,8 @@ const ListItem = ({ item, feed, t, dark, delay }) => {
 const BriefCard = ({ item, rank, feed, t, dark, delay }) => {
   const label = item.label || "News";
   const ago   = timeAgo(item.pubDate);
+  const [imgErr, setImgErr] = useState(false);
+  const showImg = item.image && !imgErr;
   return (
     <div className="fade-up" style={{
       background:"var(--surface)", border:"1px solid var(--border2)",
@@ -614,17 +627,27 @@ const BriefCard = ({ item, rank, feed, t, dark, delay }) => {
     }}>
       <div style={{ display:"flex" }}>
         <div style={{ width:4, background:feed.accent, flexShrink:0 }} />
-        <div style={{ padding:"16px 18px", flex:1 }}>
-          <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:9 }}>
-            <span style={{ fontFamily:"'Playfair Display',serif", fontSize:20, fontWeight:600, color:feed.accent, lineHeight:1 }}>{rank}</span>
-            <CatBadge label={label} dark={dark} size="sm" />
+        <div style={{ padding:"16px 18px", flex:1, minWidth:0 }}>
+          <div style={{ display:"flex", gap:12, alignItems:"flex-start" }}>
+            <div style={{ flex:1, minWidth:0 }}>
+              <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:9 }}>
+                <span style={{ fontFamily:"'Playfair Display',serif", fontSize:20, fontWeight:600, color:feed.accent, lineHeight:1 }}>{rank}</span>
+                <CatBadge label={label} dark={dark} size="sm" />
+              </div>
+              <div style={{ fontFamily:"'Playfair Display',serif", fontSize:15, fontWeight:400, lineHeight:1.5, color:"var(--text1)", marginBottom: item.brief ? 7 : 12 }}>
+                {item.headline}
+              </div>
+              {item.brief && (
+                <p style={{ fontSize:13, lineHeight:1.7, color:"var(--text2)", marginBottom:12 }}>{item.brief}</p>
+              )}
+            </div>
+            {showImg && (
+              <div style={{ width:80, height:80, borderRadius:10, overflow:"hidden", flexShrink:0 }}>
+                <img src={item.image} alt="" onError={() => setImgErr(true)}
+                  style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} />
+              </div>
+            )}
           </div>
-          <div style={{ fontFamily:"'Playfair Display',serif", fontSize:15, fontWeight:400, lineHeight:1.5, color:"var(--text1)", marginBottom: item.brief ? 7 : 12 }}>
-            {item.headline}
-          </div>
-          {item.brief && (
-            <p style={{ fontSize:13, lineHeight:1.7, color:"var(--text2)", marginBottom:12 }}>{item.brief}</p>
-          )}
           <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
             <div style={{ display:"flex", alignItems:"center", gap:6 }}>
               <SourceAvatar src={item.source} feed={feed} size={20} />
