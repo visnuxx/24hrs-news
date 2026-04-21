@@ -79,7 +79,6 @@ const FEEDS = {
       url: "https://news.google.com/rss/search?q=சென்னை&hl=ta&gl=IN&ceid=IN:ta",
       source: "Google News · சென்னை",
     },
-
     {
       url: "https://tamil.oneindia.com/rss/feeds/tamilnadu-fb.xml",
       source: "oneindia",
@@ -114,7 +113,6 @@ const KEYWORD_RULES = [
       "opposition", "ruling party", "by-election", "governor",
       "senate", "referendum", "ballot", "incumbent", "tvk", "edappadi",
       "palaniswami", "kanimozhi", "stalin", "dravidian",
-      // Tamil keywords
       "தேர்தல்", "வாக்கு", "அரசு", "அமைச்சர்", "முதலமைச்சர்", "ஆளுநர்"],
     partial: ["prime minister", "chief minister", "political party", "poll result",
       "election result", "votes cast", "campaigns for"],
@@ -215,19 +213,101 @@ const KEYWORD_RULES = [
 
 function keywordLabel(title) {
   const text = " " + title.toLowerCase() + " ";
-
   for (const rule of KEYWORD_RULES) {
     const exactHit = rule.exact.some((kw) => {
       const re = new RegExp(`(?<![a-z0-9])${kw.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![a-z0-9])`, "i");
       return re.test(text);
     });
     if (exactHit) return rule.label;
-
     const partialHit = rule.partial.some((kw) => text.includes(kw));
     if (partialHit) return rule.label;
   }
-
   return "World";
+}
+
+// ── image extraction ──────────────────────────────────────────────────────────
+
+/**
+ * Tries every known RSS image location in order and returns the first URL found.
+ * Returns null if no image is found.
+ */
+function extractImage(item) {
+  // 1. <media:content url="..."> or <media:content><url>...</url></media:content>
+  const mediaContent = item["media:content"];
+  if (mediaContent) {
+    // Array of media:content nodes
+    const nodes = Array.isArray(mediaContent) ? mediaContent : [mediaContent];
+    for (const node of nodes) {
+      // Attribute form: node.$ = { url: "...", medium: "image", ... }
+      if (node.$ && node.$.url && isImageUrl(node.$.url)) return node.$.url;
+      // Text form
+      if (typeof node === "string" && isImageUrl(node)) return node;
+    }
+  }
+
+  // 2. <media:thumbnail url="...">
+  const mediaThumbnail = item["media:thumbnail"];
+  if (mediaThumbnail) {
+    const nodes = Array.isArray(mediaThumbnail) ? mediaThumbnail : [mediaThumbnail];
+    for (const node of nodes) {
+      if (node.$ && node.$.url && isImageUrl(node.$.url)) return node.$.url;
+      if (typeof node === "string" && isImageUrl(node)) return node;
+    }
+  }
+
+  // 3. <enclosure url="..." type="image/...">
+  const enclosure = item.enclosure;
+  if (enclosure) {
+    const nodes = Array.isArray(enclosure) ? enclosure : [enclosure];
+    for (const node of nodes) {
+      if (node.$ && node.$.url && isImageUrl(node.$.url)) return node.$.url;
+    }
+  }
+
+  // 4. <image><url>...</url></image>  (channel-level sometimes appears in items too)
+  if (item.image) {
+    const img = Array.isArray(item.image) ? item.image[0] : item.image;
+    const url = img.url ? (Array.isArray(img.url) ? img.url[0] : img.url) : null;
+    if (url && isImageUrl(url)) return url;
+  }
+
+  // 5. Scan <description> HTML for the first <img src="...">
+  const desc = item.description
+    ? Array.isArray(item.description) ? item.description[0] : item.description
+    : null;
+  if (desc && typeof desc === "string") {
+    const imgMatch = desc.match(/<img[^>]+src=["']([^"']+)["']/i);
+    if (imgMatch && isImageUrl(imgMatch[1])) return imgMatch[1];
+  }
+
+  // 6. <content:encoded> — full article HTML, grab first img
+  const contentEncoded = item["content:encoded"];
+  if (contentEncoded) {
+    const raw = Array.isArray(contentEncoded) ? contentEncoded[0] : contentEncoded;
+    const imgMatch = raw.match(/<img[^>]+src=["']([^"']+)["']/i);
+    if (imgMatch && isImageUrl(imgMatch[1])) return imgMatch[1];
+  }
+
+  return null;
+}
+
+function isImageUrl(url) {
+  if (!url || typeof url !== "string") return false;
+  if (!url.startsWith("http")) return false;
+  // Accept any URL from a known CDN/image path, or explicit image extensions
+  return /\.(jpg|jpeg|png|webp|gif)(\?.*)?$/i.test(url) ||
+    url.includes("/image/") ||
+    url.includes("/images/") ||
+    url.includes("/img/") ||
+    url.includes("/photo/") ||
+    url.includes("/photos/") ||
+    url.includes("/media/") ||
+    url.includes("wsj.net") ||
+    url.includes("bbci.co.uk") ||
+    url.includes("thehindu") ||
+    url.includes("ichef") ||        // BBC image CDN
+    url.includes("cloudfront") ||
+    url.includes("wp-content");     // WordPress sites
 }
 
 // ── cache helpers ─────────────────────────────────────────────────────────────
@@ -266,14 +346,31 @@ function writeCache(feedKey, articles) {
 // ── feed helpers ──────────────────────────────────────────────────────────────
 
 async function parseFeed({ url, source }) {
-  const response = await axios.get(url, { timeout: 8000 });
-  const data = await xml2js.parseStringPromise(response.data);
-  const items = data.rss.channel[0].item || [];
+  const response = await axios.get(url, {
+    timeout: 8000,
+    headers: {
+      // Some feeds block default axios UA; mimic a browser
+      "User-Agent": "Mozilla/5.0 (compatible; NewsReader/1.0)",
+    },
+  });
+
+  // xml2js needs to preserve namespaced attributes for media:content etc.
+  const parser = new xml2js.Parser({
+    explicitArray: true,
+    mergeAttrs: false,
+    explicitCharkey: false,
+  });
+
+  const data = await parser.parseStringPromise(response.data);
+  const items = data.rss?.channel?.[0]?.item || [];
+
   return items.map((item) => ({
-    title: item.title[0],
-    link: item.link[0],
-    pubDate: item.pubDate ? item.pubDate[0] : null,
+    title:   Array.isArray(item.title)   ? item.title[0]   : (item.title   || ""),
+    link:    Array.isArray(item.link)    ? item.link[0]    : (item.link    || ""),
+    pubDate: Array.isArray(item.pubDate) ? item.pubDate[0] : (item.pubDate || null),
     source,
+    // NEW: extract image from all possible RSS fields
+    image: extractImage(item),
   }));
 }
 
@@ -321,7 +418,8 @@ async function getFeed(feedKey) {
       feedList.map(async (feed) => {
         try {
           const articles = await parseFeed(feed);
-          console.log(`[feed] ✅ ${feed.source} — ${articles.length} articles`);
+          const withImg = articles.filter(a => a.image).length;
+          console.log(`[feed] ✅ ${feed.source} — ${articles.length} articles (${withImg} with images)`);
           return articles;
         } catch (err) {
           console.error(`[feed] ❌ ${feed.source} — ${err.message}`);
@@ -353,30 +451,18 @@ async function getFeed(feedKey) {
 // ── routes ────────────────────────────────────────────────────────────────────
 
 app.get("/news/international", async (req, res) => {
-  try {
-    res.json(await getFeed("international"));
-  } catch (err) {
-    console.error(err.message);
-    res.status(500).send("error fetching news");
-  }
+  try { res.json(await getFeed("international")); }
+  catch (err) { console.error(err.message); res.status(500).send("error fetching news"); }
 });
 
 app.get("/news/tamil-nadu", async (req, res) => {
-  try {
-    res.json(await getFeed("tamilNadu"));
-  } catch (err) {
-    console.error(err.message);
-    res.status(500).send("error fetching news");
-  }
+  try { res.json(await getFeed("tamilNadu")); }
+  catch (err) { console.error(err.message); res.status(500).send("error fetching news"); }
 });
 
 app.get("/news/tamil", async (req, res) => {
-  try {
-    res.json(await getFeed("tamil"));
-  } catch (err) {
-    console.error(err.message);
-    res.status(500).send("error fetching news");
-  }
+  try { res.json(await getFeed("tamil")); }
+  catch (err) { console.error(err.message); res.status(500).send("error fetching news"); }
 });
 
 app.delete("/cache/:feedKey", (req, res) => {
@@ -406,8 +492,8 @@ async function generateSummary(feedKey) {
 
   const feedLabel =
     feedKey === "tamilNadu" ? "Tamil Nadu" :
-      feedKey === "tamil" ? "Tamil language news from Tamil Nadu" :
-        "International";
+    feedKey === "tamil"     ? "Tamil language news from Tamil Nadu" :
+                              "International";
 
   const prompt = `You are a senior news editor creating a daily briefing for ${feedLabel} news.
 
@@ -457,22 +543,20 @@ ${JSON.stringify(inputList)}`;
     const enriched = parsed.map((item) => {
       const original = articles[item.originalIdx] || {};
       return {
-        rank: item.rank,
+        rank:     item.rank,
         headline: item.headline,
-        brief: item.brief,
-        label: VALID_LABELS.includes(item.label) ? item.label : "World",
-        source: item.source || original.source,
-        link: original.link || null,
-        pubDate: original.pubDate || null,
+        brief:    item.brief,
+        label:    VALID_LABELS.includes(item.label) ? item.label : "World",
+        source:   item.source || original.source,
+        link:     original.link    || null,
+        pubDate:  original.pubDate || null,
+        image:    original.image   || null,   // pass image through to brief too
       };
     });
 
     console.log(`[summary] ✅ Generated Top 10 for "${feedKey}"`);
-    return {
-      generatedAt: new Date().toISOString(),
-      feedKey,
-      items: enriched,
-    };
+    return { generatedAt: new Date().toISOString(), feedKey, items: enriched };
+
   } catch (err) {
     console.error(`[summary] ❌ Gemini failed:`, err.message);
     return {
@@ -480,13 +564,14 @@ ${JSON.stringify(inputList)}`;
       feedKey,
       fallback: true,
       items: articles.slice(0, 10).map((a, i) => ({
-        rank: i + 1,
+        rank:     i + 1,
         headline: a.title,
-        brief: null,
-        label: a.label || "World",
-        source: a.source,
-        link: a.link,
-        pubDate: a.pubDate,
+        brief:    null,
+        label:    a.label || "World",
+        source:   a.source,
+        link:     a.link,
+        pubDate:  a.pubDate,
+        image:    a.image || null,
       })),
     };
   }
@@ -537,9 +622,7 @@ app.get("/news/summary/:feedKey", async (req, res) => {
   summaryLocks[feedKey] = (async () => {
     const cached = readSummaryCache(feedKey);
     if (cached) return cached;
-
     await getFeed(feedKey);
-
     const summary = await generateSummary(feedKey);
     writeSummaryCache(feedKey, summary);
     return summary;
@@ -554,6 +637,8 @@ app.get("/news/summary/:feedKey", async (req, res) => {
     delete summaryLocks[feedKey];
   }
 });
+
+// ── warmup ────────────────────────────────────────────────────────────────────
 
 setTimeout(() => {
   console.log("[warmup] Preloading feeds...");
