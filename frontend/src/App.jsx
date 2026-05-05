@@ -84,9 +84,41 @@ globalStyle.textContent = `
     box-shadow: var(--shadow-lg);
   }
 
-  .list-item:hover {
-    background: var(--surface2);
+  .list-item:hover { background: var(--surface2); }
+
+  .jump-nav {
+    position: sticky;
+    top: 60px;
+    z-index: 100;
+    background: rgba(246,247,249,0.92);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    margin: 0 -20px;
+    padding: 0 20px;
+    transition: box-shadow 0.2s;
   }
+  body.dark .jump-nav {
+    background: rgba(17,16,9,0.92);
+  }
+  .jump-pill {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 11px; font-weight: 500; letter-spacing: 0.2px;
+    padding: 5px 13px; border-radius: 100px; border: none;
+    cursor: pointer; white-space: nowrap; transition: all 0.15s;
+    background: transparent; color: var(--text3);
+    flex-shrink: 0;
+  }
+  .jump-pill:hover { color: var(--text1); background: var(--surface2); }
+  .jump-pill.active { background: var(--surface); color: var(--text1); box-shadow: var(--shadow-sm); border: 1px solid var(--border); }
+
+  .lead-story-card:hover .lead-story-title {
+    text-decoration: underline;
+    text-decoration-color: rgba(0,0,0,0.2);
+  }
+
+  @keyframes leadIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+  .lead-in { animation: leadIn 0.3s ease both; }
 
   @media (max-width: 600px) {
     .card-grid { grid-template-columns: 1fr; }
@@ -97,14 +129,14 @@ globalStyle.textContent = `
 document.head.appendChild(globalStyle);
 
 // ---------- Constants ----------
-const API_BASE = "https://two4hrs-news.onrender.com";
+const API_BASE = "http://localhost:5000";
 
 const FEEDS = [
-  { key:"tamil-nadu",    label:"Tamil Nadu",    taLabel:"தமிழ்நாடு", endpoint:"/news/tamil-nadu",    summaryKey:"tamilNadu",     accent:"#1D9E75", fill:"#E1F5EE", ink:"#085041" },
-  { key:"international", label:"International", taLabel:"உலகம்",     endpoint:"/news/international", summaryKey:"international", accent:"#185FA5", fill:"#E6F1FB", ink:"#0C447C" },
+  { key:"tamil-nadu",    label:"Tamil Nadu",    taLabel:"தமிழ்நாடு", endpoint:"/news/tamil-nadu",    summaryKey:"tamilNadu",     digestKey:"tamilNadu",     accent:"#1D9E75", fill:"#E1F5EE", ink:"#085041" },
+  { key:"international", label:"International", taLabel:"உலகம்",     endpoint:"/news/international", summaryKey:"international", digestKey:"international", accent:"#185FA5", fill:"#E6F1FB", ink:"#0C447C" },
 ];
 
-const TAMIL_FEED = FEEDS[2];
+const TAMIL_FEED = { key:"tamil", label:"Tamil", accent:"#854F0B", fill:"#FAEEDA", ink:"#633806" };
 
 const CATEGORIES = {
   Politics:      { bg:"#FEF3C7", ink:"#92400E", darkBg:"#412402", darkInk:"#FAC775", icon:"🏛" },
@@ -123,41 +155,51 @@ const CATEGORIES = {
 const TRANSLATIONS = {
   en: {
     dark:"Dark", light:"Light",
-    allStories:"All stories", todaysBrief:"Today's Brief",
-    generating:"generating…", generatingBrief:"Generating brief…",
+    allStories:"All stories", briefing:"Briefing",
+    generating:"generating…",
     category:"Category", source:"Source", searchPlaceholder:"Search headlines…",
     all:"All", allSources:"All sources", read:"Read", share:"Share",
     loading:"Loading…", selectFeed:"Select a feed",
     whatRead:"What would you like to read?", chooseFeed:"Choose a feed above",
     failedLoad:"Failed to load", backendError:"Backend not reachable",
     noArticles:"No articles found", tryDifferent:"Try a different filter", tryLater:"Try again later",
-    todaysBriefLabel:"Today's Brief", generatedNote:"Generated from", articles:"articles",
-    poweredBy:"Powered by Gemini", failedSummary:"Summary unavailable",
-    geminiError:"Check GEMINI_API_KEY", keywordMode:"keyword mode",
+    articles:"articles",
+    poweredByGemini:"Summarized by Gemini",
+    geminiError:"Check GEMINI_API_KEY", keywordFallback:"Showing keyword-grouped fallback",
     feeds:{"tamil-nadu":"Tamil Nadu", international:"International", tamil:"தமிழ்"},
     gridView:"Grid", listView:"List", filters:"Filters", language:"Language",
-    aiSummary:"AI-powered news summary",
-    aiSubtitle:"Key stories distilled into insights, powered by Gemini.",
-    readBrief:"✦  Read Brief",
+    aiSummary:"AI-powered news briefing",
+    aiSubtitle:"Today's stories grouped and summarized by AI, powered by Gemini.",
+    readBriefing:"✦  Today's Briefing",
+    briefingEmpty:"No stories yet today",
+    briefingEmptySub:"Check back once articles start publishing after midnight.",
+    briefingFailed:"Couldn't generate briefing",
+    briefingLoading:"AI is reading today's news…",
+    keywordMode:"keyword mode",
   },
   ta: {
     dark:"இருள்", light:"ஒளி",
-    allStories:"அனைத்து செய்திகள்", todaysBrief:"இன்றைய சுருக்கம்",
-    generating:"உருவாக்குகிறது…", generatingBrief:"சுருக்கம் உருவாக்குகிறது…",
+    allStories:"அனைத்து செய்திகள்", briefing:"சுருக்கம்",
+    generating:"உருவாக்குகிறது…",
     category:"வகை", source:"மூலம்", searchPlaceholder:"செய்திகள் தேடுக…",
     all:"அனைத்தும்", allSources:"அனைத்து மூலங்கள்", read:"படிக்க", share:"பகிர்",
     loading:"ஏற்றுகிறது…", selectFeed:"ஒரு செய்தி தேர்ந்தெடுக்கவும்",
     whatRead:"என்ன படிக்க விரும்புகிறீர்கள்?", chooseFeed:"மேலே ஒரு செய்தி தேர்ந்தெடுக்கவும்",
     failedLoad:"ஏற்றல் தோல்வி", backendError:"பின்தள சேவை இயங்கவில்லை",
     noArticles:"செய்திகள் இல்லை", tryDifferent:"வேறு வடிகட்டி முயற்சிக்கவும்", tryLater:"பின்னர் முயற்சிக்கவும்",
-    todaysBriefLabel:"இன்றைய சுருக்கம்", generatedNote:"உருவாக்கப்பட்டது", articles:"செய்திகள்",
-    poweredBy:"Gemini மூலம்", failedSummary:"சுருக்கம் தோல்வி",
-    geminiError:"GEMINI_API_KEY சரிபார்க்கவும்", keywordMode:"முக்கியசொல் முறை",
+    articles:"செய்திகள்",
+    poweredByGemini:"Gemini மூலம் சுருக்கப்பட்டது",
+    geminiError:"GEMINI_API_KEY சரிபார்க்கவும்", keywordFallback:"முக்கியசொல் முறையில் காட்டப்படுகிறது",
     feeds:{"tamil-nadu":"தமிழ்நாடு", international:"உலகம்", tamil:"தமிழ்"},
     gridView:"கட்டம்", listView:"பட்டியல்", filters:"வடிகட்டிகள்", language:"மொழி",
     aiSummary:"AI செய்தி சுருக்கம்",
-    aiSubtitle:"முக்கிய செய்திகள் Gemini மூலம் சுருக்கப்பட்டது.",
-    readBrief:"✦  சுருக்கம் படிக்க",
+    aiSubtitle:"இன்றைய செய்திகள், AI-ஆல் சுருக்கப்பட்டது.",
+    readBriefing:"✦  இன்றைய சுருக்கம்",
+    briefingEmpty:"இன்று செய்திகள் இல்லை",
+    briefingEmptySub:"நள்ளிரவுக்குப் பின் மீண்டும் சரிபார்க்கவும்.",
+    briefingFailed:"சுருக்கம் உருவாக்க முடியவில்லை",
+    briefingLoading:"AI இன்றைய செய்திகளைப் படிக்கிறது…",
+    keywordMode:"முக்கியசொல் முறை",
   },
 };
 
@@ -172,8 +214,9 @@ const getCat = (label) => CATEGORIES[label] || CATEGORIES.News;
 const cityFromSource = (src) => { if (!src) return null; const m = src.match(/Google News · (.+)/); return m ? m[1] : null; };
 const sourceLabel = (src) => cityFromSource(src) || src || "";
 const initials = (src) => { if (!src) return "?"; const c = cityFromSource(src); if (c) return c.slice(0, 2).toUpperCase(); return src.trim().split(/\s+/).map(w => w[0]).join("").slice(0, 2).toUpperCase(); };
-const timeAgo = (d) => { if (!d) return ""; const s = Math.floor((Date.now() - new Date(d)) / 1000); if (isNaN(s) || s < 0) return ""; if (s < 60) return "now"; if (s < 3600) return Math.floor(s / 60) + "m"; if (s < 86400) return Math.floor(s / 3600) + "h"; return Math.floor(s / 86400) + "d"; };
+const timeAgo = (d) => { if (!d) return ""; const s = Math.floor((Date.now() - new Date(d)) / 1000); if (isNaN(s) || s < 0) return ""; if (s < 60) return "now"; if (s < 3600) return Math.floor(s / 60) + "m ago"; if (s < 86400) return Math.floor(s / 3600) + "h ago"; return Math.floor(s / 86400) + "d ago"; };
 const formatDate = (iso) => { if (!iso) return ""; const d = new Date(iso); return d.toLocaleDateString("en-IN", { weekday:"short", day:"numeric", month:"short" }) + " · " + d.toLocaleTimeString("en-IN", { hour:"2-digit", minute:"2-digit" }); };
+const formatFullDate = (iso) => { if (!iso) return ""; return new Date(iso).toLocaleDateString("en-IN", { weekday:"long", year:"numeric", month:"long", day:"numeric" }); };
 const whatsappShare = (title, link) => window.open(`https://wa.me/?text=${encodeURIComponent(`${title}\n${link}`)}`, "_blank");
 
 // ---------- Category Badge ----------
@@ -218,8 +261,7 @@ const Thumb = ({ label, dark, image, mode = "banner", height = 140, size = 76 })
     return (
       <div style={{ width:size, height:size, borderRadius:10, background:bg, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, overflow:"hidden", position:"relative" }}>
         {showImg
-          ? <img src={image} alt="" onError={() => setImgErr(true)}
-              style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} />
+          ? <img src={image} alt="" onError={() => setImgErr(true)} style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} />
           : <span style={{ fontSize:size * 0.38 }}>{cat.icon}</span>
         }
       </div>
@@ -228,8 +270,7 @@ const Thumb = ({ label, dark, image, mode = "banner", height = 140, size = 76 })
   return (
     <div style={{ width:"100%", height, background:bg, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, overflow:"hidden", position:"relative" }}>
       {showImg
-        ? <img src={image} alt="" onError={() => setImgErr(true)}
-            style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} />
+        ? <img src={image} alt="" onError={() => setImgErr(true)} style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} />
         : <span style={{ fontSize:44 }}>{cat.icon}</span>
       }
     </div>
@@ -237,7 +278,7 @@ const Thumb = ({ label, dark, image, mode = "banner", height = 140, size = 76 })
 };
 
 // ---------- Sticky Header ----------
-const Header = ({ lang, setLang, dark, setDark, t }) => {
+const Header = ({ dark, setDark, t }) => {
   const [scrolled, setScrolled] = useState(false);
   useEffect(() => {
     const handler = () => setScrolled(window.scrollY > 8);
@@ -248,9 +289,7 @@ const Header = ({ lang, setLang, dark, setDark, t }) => {
   return (
     <header style={{
       position:"sticky", top:0, zIndex:200,
-      background: scrolled
-        ? "rgba(246,247,249,0.90)"
-        : "transparent",
+      background: scrolled ? "rgba(246,247,249,0.90)" : "transparent",
       backdropFilter: scrolled ? "blur(14px)" : "none",
       WebkitBackdropFilter: scrolled ? "blur(14px)" : "none",
       borderBottom:`1px solid ${scrolled ? "var(--border)" : "transparent"}`,
@@ -308,8 +347,8 @@ const FeedTabs = ({ activeFeed, onSelect, newsCount, status, t, dark }) => (
   </div>
 );
 
-// ---------- Hero Brief ----------
-const HeroBrief = ({ activeFeed, onReadBrief, t }) => (
+// ---------- Hero Banner ----------
+const HeroBanner = ({ activeFeed, onReadBriefing, t }) => (
   <div className="hero-brief" style={{
     background:"var(--hero-bg)", border:"1px solid var(--hero-border)",
     borderRadius:"var(--radius-lg)", padding:"24px 28px",
@@ -325,27 +364,464 @@ const HeroBrief = ({ activeFeed, onReadBrief, t }) => (
         background:"rgba(24,95,165,0.12)",
         padding:"4px 11px", borderRadius:100, marginBottom:10,
       }}>
-        ✦ Today's Brief · {activeFeed ? t.feeds[activeFeed.key] : ""}
+        ✦ Today's Briefing · {activeFeed ? t.feeds[activeFeed.key] : ""}
       </div>
       <div style={{ fontFamily:"'Playfair Display',serif", fontSize:21, fontWeight:600, color:"var(--text1)", marginBottom:6, lineHeight:1.3 }}>
         {t.aiSummary}
       </div>
       <div style={{ fontSize:13, color:"var(--text2)", lineHeight:1.55 }}>{t.aiSubtitle}</div>
     </div>
-    <button onClick={onReadBrief} style={{
-      fontFamily:"'Inter',sans-serif", fontSize:13, fontWeight:600,
-      color:"#185FA5", background:"var(--surface)",
-      border:"1.5px solid #185FA5", borderRadius:100,
-      padding:"10px 22px", cursor:"pointer", whiteSpace:"nowrap",
-      boxShadow:"var(--shadow-sm)", transition:"all 0.18s",
-    }}
-      onMouseEnter={e => { e.currentTarget.style.background = "#185FA5"; e.currentTarget.style.color = "white"; }}
-      onMouseLeave={e => { e.currentTarget.style.background = "var(--surface)"; e.currentTarget.style.color = "#185FA5"; }}
-    >
-      {t.readBrief}
-    </button>
+    <div style={{ display:"flex", flexDirection:"column", gap:10, flexShrink:0 }}>
+      <button onClick={onReadBriefing} style={{
+        fontFamily:"'Inter',sans-serif", fontSize:13, fontWeight:600,
+        color:"#854F0B", background:"var(--surface)",
+        border:"1.5px solid #854F0B", borderRadius:100,
+        padding:"10px 22px", cursor:"pointer", whiteSpace:"nowrap",
+        boxShadow:"var(--shadow-sm)", transition:"all 0.18s",
+      }}
+        onMouseEnter={e => { e.currentTarget.style.background = "#854F0B"; e.currentTarget.style.color = "white"; }}
+        onMouseLeave={e => { e.currentTarget.style.background = "var(--surface)"; e.currentTarget.style.color = "#854F0B"; }}
+      >
+        {t.readBriefing}
+      </button>
+    </div>
   </div>
 );
+
+// ============================================================
+// ---------- BRIEFING VIEW (editorial, AI-powered) ----------
+// ============================================================
+
+// ── slug helper for section IDs ───────────────────────────────────────────────
+const toSlug = (str) => str.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+
+// ---------- Briefing Masthead ----------
+const BriefingMasthead = ({ feedLabel, totalArticles, t }) => {
+  const dateStr = formatFullDate(new Date().toISOString());
+  const now = new Date();
+  const readMins = totalArticles ? Math.max(3, Math.round(totalArticles / 18)) : null;
+  return (
+    <div style={{ marginBottom: 28, textAlign: "center" }}>
+      <div style={{
+        fontSize: 10, fontWeight: 700, letterSpacing: 1.6,
+        textTransform: "uppercase", color: "var(--text3)", marginBottom: 8,
+      }}>
+        {feedLabel} · Daily Briefing
+      </div>
+      <h1 style={{
+        fontFamily: "'Playfair Display',serif",
+        fontSize: 44, fontWeight: 600, letterSpacing: -1.2,
+        color: "var(--text1)", lineHeight: 1.05, marginBottom: 12,
+      }}>
+        Today's Briefing
+      </h1>
+      <div style={{
+        display: "flex", alignItems: "center", justifyContent: "center",
+        gap: 12, fontSize: 12, color: "var(--text2)", fontStyle: "italic",
+        marginBottom: 18, flexWrap: "wrap",
+      }}>
+        <span>{dateStr}</span>
+        {readMins && (
+          <>
+            <span style={{ color: "var(--border)", fontStyle: "normal" }}>·</span>
+            <span style={{ fontStyle: "normal", color: "var(--text3)", fontSize: 11 }}>~{readMins} min read</span>
+          </>
+        )}
+      </div>
+      <div style={{ height: 1, background: "var(--border)", width: 80, margin: "0 auto" }} />
+    </div>
+  );
+};
+
+// ---------- Lead Story (section 1 hero) ----------
+const LeadStory = ({ section }) => {
+  const lead = section.bullets[0];
+  const rest = section.bullets.slice(1);
+  const ago  = timeAgo(lead?.pubDate);
+  if (!lead) return null;
+
+  return (
+    <div className="lead-in" style={{
+      background: "var(--surface)",
+      border: "1px solid var(--border)",
+      borderRadius: "var(--radius-lg)",
+      overflow: "hidden",
+      marginBottom: 48,
+    }}>
+      {/* amber top bar */}
+      <div style={{ height: 3, background: "linear-gradient(90deg, #BA7517, #EF9F27)" }} />
+
+      <div style={{ padding: "28px 32px 24px" }}>
+        {/* eyebrow */}
+        <div style={{
+          display: "inline-flex", alignItems: "center", gap: 6,
+          fontSize: 9, fontWeight: 700, letterSpacing: 1.2,
+          textTransform: "uppercase", color: "#854F0B",
+          background: "#FAEEDA", padding: "3px 10px",
+          borderRadius: 100, marginBottom: 16,
+        }}>
+          ★ Lead Story
+        </div>
+
+        {/* section heading */}
+        <div style={{
+          fontFamily: "'Playfair Display',serif",
+          fontSize: 11, fontWeight: 400, color: "var(--text3)",
+          letterSpacing: 1, textTransform: "uppercase", marginBottom: 8,
+        }}>
+          {section.heading}
+        </div>
+
+        {/* lead bullet as big headline */}
+        <a
+          href={lead.link || "#"} target="_blank" rel="noopener noreferrer"
+          className="lead-story-card"
+          style={{ display: "block", textDecoration: "none", marginBottom: 14 }}
+        >
+          <h2 className="lead-story-title" style={{
+            fontFamily: "'Playfair Display',serif",
+            fontSize: 26, fontWeight: 600, lineHeight: 1.35,
+            color: "var(--text1)", letterSpacing: -0.3,
+          }}>
+            {lead.text}
+          </h2>
+        </a>
+
+        {/* section summary below headline */}
+        {section.summary && (
+          <p style={{
+            fontFamily: "'Playfair Display',serif",
+            fontSize: 15, fontStyle: "italic",
+            lineHeight: 1.65, color: "var(--text2)",
+            marginBottom: 20,
+          }}>
+            {section.summary}
+          </p>
+        )}
+
+        {/* source + time */}
+        <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 11, color: "var(--text3)", marginBottom: rest.length ? 22 : 0 }}>
+          {lead.link ? (
+            <a href={lead.link} target="_blank" rel="noopener noreferrer"
+              style={{ color: "var(--text2)", borderBottom: "1px dotted var(--border)" }}>
+              {sourceLabel(lead.source)}
+            </a>
+          ) : <span>{sourceLabel(lead.source)}</span>}
+          {ago && <><span>·</span><span>{ago}</span></>}
+        </div>
+
+        {/* remaining bullets as compact list */}
+        {rest.length > 0 && (
+          <div style={{ borderTop: "1px solid var(--border)", paddingTop: 16 }}>
+            <div style={{
+              fontSize: 9, fontWeight: 700, letterSpacing: 1,
+              textTransform: "uppercase", color: "var(--text3)", marginBottom: 12,
+            }}>
+              Also in this story
+            </div>
+            <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+              {rest.map((b, i) => {
+                const bAgo = timeAgo(b.pubDate);
+                return (
+                  <li key={b.link || i} style={{
+                    position: "relative", paddingLeft: 18, marginBottom: 12,
+                    fontSize: 14, lineHeight: 1.55, color: "var(--text1)",
+                  }}>
+                    <span style={{
+                      position: "absolute", left: 0, top: 9,
+                      width: 5, height: 5, borderRadius: "50%",
+                      background: "#BA7517",
+                    }} />
+                    <span>{b.text}</span>
+                    <span style={{ display: "block", marginTop: 3, fontSize: 11, color: "var(--text3)" }}>
+                      {b.link
+                        ? <a href={b.link} target="_blank" rel="noopener noreferrer" style={{ color: "var(--text2)", borderBottom: "1px dotted var(--border)" }}>{sourceLabel(b.source)}</a>
+                        : <span>{sourceLabel(b.source)}</span>
+                      }
+                      {bAgo && <> · {bAgo}</>}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// ---------- Jump Nav ----------
+const JumpNav = ({ sections, activeSlug }) => {
+  const navRef = useRef(null);
+
+  // scroll the active pill into view inside the nav
+  useEffect(() => {
+    if (!navRef.current) return;
+    const active = navRef.current.querySelector(".jump-pill.active");
+    if (active) active.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+  }, [activeSlug]);
+
+  const scrollTo = (slug) => {
+    const el = document.getElementById(`section-${slug}`);
+    if (!el) return;
+    // offset for sticky header (60px) + jump nav (44px) + small gap
+    const top = el.getBoundingClientRect().top + window.scrollY - 116;
+    window.scrollTo({ top, behavior: "smooth" });
+  };
+
+  return (
+    <div className="jump-nav" style={{ marginBottom: 0 }}>
+      <div ref={navRef} className="chip-scroll" style={{ padding: "8px 0", gap: 4 }}>
+        {sections.map((sec, i) => {
+          const slug = toSlug(sec.heading);
+          const isLead = i === 0;
+          const on = activeSlug === slug;
+          return (
+            <button
+              key={slug}
+              className={`jump-pill${on ? " active" : ""}`}
+              onClick={() => scrollTo(slug)}
+            >
+              {isLead && <span style={{ fontSize: 9, color: "#BA7517" }}>★</span>}
+              {sec.heading}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
+// ---------- Editorial Bullet ----------
+const EditorialBullet = ({ bullet }) => {
+  const ago = timeAgo(bullet.pubDate);
+  return (
+    <li style={{
+      position: "relative",
+      paddingLeft: 22, marginBottom: 14,
+      fontFamily: "'Inter',sans-serif", fontSize: 15,
+      lineHeight: 1.65, color: "var(--text1)",
+      listStyle: "none",
+    }}>
+      <span style={{
+        position: "absolute", left: 0, top: 10,
+        width: 6, height: 6, borderRadius: "50%",
+        background: "var(--text2)",
+      }} />
+      <span>{bullet.text}</span>
+      <span style={{ display: "block", marginTop: 4, fontSize: 11, color: "var(--text3)" }}>
+        {bullet.link ? (
+          <a href={bullet.link} target="_blank" rel="noopener noreferrer"
+            style={{ color: "var(--text2)", borderBottom: "1px dotted var(--text3)", paddingBottom: 1 }}>
+            {sourceLabel(bullet.source)}
+          </a>
+        ) : (
+          <span>{sourceLabel(bullet.source)}</span>
+        )}
+        {ago && <> · {ago}</>}
+      </span>
+    </li>
+  );
+};
+
+// ---------- Editorial Section (sections 2+) ----------
+const EditorialSection = ({ section, delay }) => {
+  const slug = toSlug(section.heading);
+  return (
+    <section
+      id={`section-${slug}`}
+      className="fade-up"
+      style={{ marginBottom: 44, animationDelay: `${delay}s`, scrollMarginTop: 120 }}
+    >
+      <div style={{ display: "flex", alignItems: "baseline", gap: 14, marginBottom: 8 }}>
+        <span style={{
+          fontFamily: "'Playfair Display',serif",
+          fontSize: 22, fontWeight: 600, fontStyle: "italic",
+          color: "var(--text3)", lineHeight: 1, minWidth: 28,
+        }}>
+          {String(section.number).padStart(2, "0")}.
+        </span>
+        <h2 style={{
+          fontFamily: "'Playfair Display',serif",
+          fontSize: 24, fontWeight: 600, lineHeight: 1.25,
+          color: "var(--text1)", letterSpacing: -0.4, flex: 1,
+        }}>
+          {section.heading}
+        </h2>
+      </div>
+
+      {section.summary && (
+        <p style={{
+          marginLeft: 42, marginBottom: 18,
+          fontFamily: "'Playfair Display',serif",
+          fontSize: 15, fontStyle: "italic",
+          lineHeight: 1.6, color: "var(--text2)",
+        }}>
+          {section.summary}
+        </p>
+      )}
+
+      <ul style={{ marginLeft: 42, padding: 0 }}>
+        {section.bullets.map((b, i) => (
+          <EditorialBullet key={b.link || i} bullet={b} />
+        ))}
+      </ul>
+    </section>
+  );
+};
+
+// ---------- Skeleton Briefing ----------
+const SkeletonBriefing = () => (
+  <div>
+    {/* skeleton lead */}
+    <div style={{
+      background: "var(--surface)", border: "1px solid var(--border)",
+      borderRadius: "var(--radius-lg)", padding: "28px 32px 24px", marginBottom: 48,
+    }}>
+      <div className="skel" style={{ width: 80, height: 18, borderRadius: 100, marginBottom: 16 }} />
+      <div className="skel" style={{ width: "78%", height: 28, marginBottom: 10 }} />
+      <div className="skel" style={{ width: "55%", height: 28, marginBottom: 16 }} />
+      <div className="skel" style={{ width: "90%", height: 14, marginBottom: 6 }} />
+      <div className="skel" style={{ width: "65%", height: 14 }} />
+    </div>
+    {[0, 1, 2, 3].map(i => (
+      <div key={i} style={{ marginBottom: 44 }}>
+        <div style={{ display: "flex", gap: 14, marginBottom: 12 }}>
+          <div className="skel" style={{ width: 28, height: 22 }} />
+          <div className="skel" style={{ width: "55%", height: 24 }} />
+        </div>
+        <div className="skel" style={{ width: "85%", height: 14, marginLeft: 42, marginBottom: 18 }} />
+        <div style={{ marginLeft: 42 }}>
+          {[0, 1, 2, 3].map(j => (
+            <div key={j} style={{ marginBottom: 14 }}>
+              <div className="skel" style={{ width: "92%", height: 14, marginBottom: 5 }} />
+              <div className="skel" style={{ width: "30%", height: 10 }} />
+            </div>
+          ))}
+        </div>
+      </div>
+    ))}
+  </div>
+);
+
+// ---------- Briefing View ----------
+const BriefingView = ({ feedKey, digestKey, t }) => {
+  const [digest, setDigest]   = useState(null);
+  const [status, setStatus]   = useState("loading");
+  const [activeSlug, setActiveSlug] = useState(null);
+  const containerRef = useRef(null);
+
+  useEffect(() => {
+    setStatus("loading");
+    setDigest(null);
+    setActiveSlug(null);
+    fetch(`${API_BASE}/news/briefing/${digestKey}`)
+      .then(r => { if (!r.ok) throw new Error(); return r.json(); })
+      .then(d => { setDigest(d); setStatus("success"); })
+      .catch(() => setStatus("error"));
+  }, [digestKey]);
+
+  // Intersection observer to highlight active section in jump nav
+  useEffect(() => {
+    if (!digest || digest.sections.length === 0) return;
+    const slugs = digest.sections.map(s => toSlug(s.heading));
+
+    const observers = [];
+    slugs.forEach((slug, i) => {
+      const el = document.getElementById(`section-${slug}`);
+      if (!el) return;
+      const obs = new IntersectionObserver(
+        ([entry]) => { if (entry.isIntersecting) setActiveSlug(slug); },
+        { rootMargin: "-30% 0px -60% 0px", threshold: 0 }
+      );
+      obs.observe(el);
+      observers.push(obs);
+    });
+
+    return () => observers.forEach(o => o.disconnect());
+  }, [digest]);
+
+  // set initial active slug when sections load
+  useEffect(() => {
+    if (digest?.sections?.length > 0) {
+      setActiveSlug(toSlug(digest.sections[0].heading));
+    }
+  }, [digest]);
+
+  const [leadSection, ...restSections] = digest?.sections || [];
+
+  return (
+    <div ref={containerRef} style={{ maxWidth: 680, margin: "0 auto", padding: "0 4px" }}>
+      <BriefingMasthead
+        feedLabel={t.feeds[feedKey] || feedKey}
+        totalArticles={digest?.totalArticles}
+        t={t}
+      />
+
+      {status === "loading" && (
+        <>
+          <div style={{ textAlign: "center", fontSize: 12, color: "var(--text3)", letterSpacing: 0.4, marginBottom: 28 }}>
+            {t.briefingLoading}
+          </div>
+          <SkeletonBriefing />
+        </>
+      )}
+
+      {status === "error" && (
+        <EmptyState icon="✦" title={t.briefingFailed} sub={t.backendError} />
+      )}
+
+      {status === "success" && digest && digest.sections.length === 0 && (
+        <EmptyState icon="🌙" title={t.briefingEmpty} sub={t.briefingEmptySub} />
+      )}
+
+      {status === "success" && digest && digest.sections.length > 0 && (
+        <>
+          {digest.fallback && (
+            <div style={{ textAlign: "center", marginBottom: 28 }}>
+              <span style={{
+                display: "inline-block", fontSize: 11, color: "var(--text3)",
+                padding: "8px 14px", background: "var(--surface2)",
+                border: "1px solid var(--border)", borderRadius: 100,
+              }}>
+                ⚠ {t.keywordFallback}
+              </span>
+            </div>
+          )}
+
+          {/* sticky jump nav */}
+          <JumpNav sections={digest.sections} activeSlug={activeSlug} />
+
+          {/* lead story — first section gets hero treatment */}
+          {leadSection && (
+            <div id={`section-${toSlug(leadSection.heading)}`} style={{ scrollMarginTop: 120, marginTop: 24 }}>
+              <LeadStory section={leadSection} />
+            </div>
+          )}
+
+          {/* remaining sections */}
+          {restSections.map((section, i) => (
+            <EditorialSection
+              key={section.number || i}
+              section={section}
+              delay={Math.min(i * 0.07, 0.45)}
+            />
+          ))}
+
+          <div style={{
+            textAlign: "center", marginTop: 48, paddingTop: 24,
+            borderTop: "1px solid var(--border)",
+            fontSize: 11, color: "var(--text3)", letterSpacing: 0.4,
+          }}>
+            {digest.totalArticles} {t.articles} · {t.poweredByGemini}
+            <div style={{ marginTop: 6, fontStyle: "italic" }}>briefed</div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
 
 // ---------- Filter Bar ----------
 const FilterBar = ({
@@ -371,7 +847,6 @@ const FilterBar = ({
 
   return (
     <div style={{ marginBottom:20 }}>
-      {/* Category row */}
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:8 }}>
         <div style={{ fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:0.8, color:"var(--text3)" }}>{t.category}</div>
         <button onClick={() => setAdvOpen(v => !v)} style={{
@@ -396,12 +871,10 @@ const FilterBar = ({
         ))}
       </div>
 
-      {/* Advanced filters */}
       {advOpen && (
         <div style={{
           background:"var(--surface2)", border:"1px solid var(--border)",
-          borderRadius:"var(--radius-md)", padding:"16px 16px 12px",
-          marginBottom:12,
+          borderRadius:"var(--radius-md)", padding:"16px 16px 12px", marginBottom:12,
         }}>
           {showTamilChip && (
             <div style={{ marginBottom:14 }}>
@@ -420,9 +893,7 @@ const FilterBar = ({
             <div>
               <div style={{ fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:0.8, color:"var(--text3)", marginBottom:7 }}>{t.source}</div>
               <div className="chip-scroll">
-                <button style={chip(activeSource === "All", cf)} onClick={() => setActiveSource("All")}>
-                  {t.allSources}
-                </button>
+                <button style={chip(activeSource === "All", cf)} onClick={() => setActiveSource("All")}>{t.allSources}</button>
                 {sources.map(({ source, count }) => (
                   <button key={source} style={chip(activeSource === source, cf)} onClick={() => setActiveSource(source)}>
                     {sourceLabel(source)} <span style={{ opacity:0.5, fontSize:11 }}>{count}</span>
@@ -434,13 +905,10 @@ const FilterBar = ({
         </div>
       )}
 
-      {/* Search */}
       <div style={{ position:"relative" }}>
         <span style={{ position:"absolute", left:13, top:"50%", transform:"translateY(-50%)", color:"var(--text3)", fontSize:15, pointerEvents:"none" }}>⌕</span>
         <input
-          type="text"
-          placeholder={t.searchPlaceholder}
-          value={search}
+          type="text" placeholder={t.searchPlaceholder} value={search}
           onChange={e => setSearch(e.target.value)}
           style={{
             fontFamily:"'Inter',sans-serif", fontSize:13, width:"100%",
@@ -487,21 +955,15 @@ const FeedMeta = ({ label, count, t, viewMode, setViewMode, showToggle }) => (
   </div>
 );
 
-// ---------- News Card (Grid) ----------
+// ---------- News Card ----------
 const NewsCard = ({ item, feed, t, dark, delay }) => {
   const label = item.label || "News";
   const ago   = timeAgo(item.pubDate);
-  const cat   = getCat(label);
-
-  const handleCardClick = (e) => {
-    if (e.target.tagName === "A" || e.target.tagName === "BUTTON") return;
-    if (item.link) window.open(item.link, "_blank", "noopener,noreferrer");
-  };
 
   return (
     <article
       className="news-card fade-up"
-      onClick={handleCardClick}
+      onClick={() => item.link && window.open(item.link, "_blank", "noopener,noreferrer")}
       style={{
         background:"var(--surface)", border:"1px solid var(--border2)",
         borderRadius:"var(--radius-lg)", overflow:"hidden",
@@ -512,9 +974,7 @@ const NewsCard = ({ item, feed, t, dark, delay }) => {
     >
       <Thumb label={label} dark={dark} image={item.image} mode="banner" height={140} />
       <div style={{ padding:"14px 16px 16px", display:"flex", flexDirection:"column", flex:1 }}>
-        <div style={{ marginBottom:9 }}>
-          <CatBadge label={label} dark={dark} size="sm" />
-        </div>
+        <div style={{ marginBottom:9 }}><CatBadge label={label} dark={dark} size="sm" /></div>
         <h3 style={{
           fontFamily:"'Playfair Display',serif", fontSize:15, fontWeight:400,
           lineHeight:1.55, color:"var(--text1)", flex:1, marginBottom:12,
@@ -522,33 +982,18 @@ const NewsCard = ({ item, feed, t, dark, delay }) => {
         }}>
           {item.title}
         </h3>
-        <div style={{
-          display:"flex", alignItems:"center", justifyContent:"space-between",
-          borderTop:"1px solid var(--border2)", paddingTop:10,
-        }}>
+        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", borderTop:"1px solid var(--border2)", paddingTop:10 }}>
           <div style={{ display:"flex", alignItems:"center", gap:7, minWidth:0 }}>
             <SourceAvatar src={item.source} feed={feed} size={22} />
             <div style={{ minWidth:0 }}>
-              <div style={{ fontSize:11, color:"var(--text2)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", maxWidth:110 }}>
-                {sourceLabel(item.source)}
-              </div>
+              <div style={{ fontSize:11, color:"var(--text2)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", maxWidth:110 }}>{sourceLabel(item.source)}</div>
               {ago && <div style={{ fontSize:10, color:"var(--text3)" }}>{ago}</div>}
             </div>
           </div>
           <div style={{ display:"flex", alignItems:"center", gap:9, flexShrink:0 }}>
-            <button
-              onClick={e => { e.stopPropagation(); whatsappShare(item.title, item.link); }}
-              style={{ fontSize:12, fontWeight:500, color:"#25D366", background:"none", border:"none", padding:0 }}
-            >↗</button>
-            <a
-              href={item.link} target="_blank" rel="noopener noreferrer"
-              onClick={e => e.stopPropagation()}
-              style={{
-                fontSize:11, fontWeight:600, color:feed.accent,
-                padding:"4px 11px", borderRadius:100,
-                border:`1px solid ${feed.accent}`,
-              }}
-            >
+            <button onClick={e => { e.stopPropagation(); whatsappShare(item.title, item.link); }} style={{ fontSize:12, fontWeight:500, color:"#25D366", background:"none", border:"none", padding:0 }}>↗</button>
+            <a href={item.link} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
+              style={{ fontSize:11, fontWeight:600, color:feed.accent, padding:"4px 11px", borderRadius:100, border:`1px solid ${feed.accent}` }}>
               {t.read}
             </a>
           </div>
@@ -570,15 +1015,12 @@ const ListItem = ({ item, feed, t, dark, delay }) => {
         padding:"16px 0", borderBottom:"1px solid var(--border)",
         display:"flex", gap:14, alignItems:"flex-start",
         cursor:"pointer", transition:"background 0.15s, padding 0.15s",
-        animationDelay:`${delay}s`,
-        borderRadius:"var(--radius-sm)",
+        animationDelay:`${delay}s`, borderRadius:"var(--radius-sm)",
       }}
     >
       <Thumb label={label} dark={dark} image={item.image} mode="square" size={76} />
       <div style={{ flex:1, minWidth:0 }}>
-        <div style={{ marginBottom:6 }}>
-          <CatBadge label={label} dark={dark} size="xs" />
-        </div>
+        <div style={{ marginBottom:6 }}><CatBadge label={label} dark={dark} size="xs" /></div>
         <h3 style={{
           fontFamily:"'Playfair Display',serif", fontSize:14, fontWeight:400,
           lineHeight:1.5, color:"var(--text1)", marginBottom:8,
@@ -589,91 +1031,16 @@ const ListItem = ({ item, feed, t, dark, delay }) => {
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
           <div style={{ display:"flex", alignItems:"center", gap:6 }}>
             <SourceAvatar src={item.source} feed={feed} size={18} />
-            <span style={{ fontSize:11, color:"var(--text2)", maxWidth:100, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
-              {sourceLabel(item.source)}
-            </span>
+            <span style={{ fontSize:11, color:"var(--text2)", maxWidth:100, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{sourceLabel(item.source)}</span>
             {ago && <><span style={{ fontSize:10, color:"var(--text3)" }}>·</span><span style={{ fontSize:10, color:"var(--text3)" }}>{ago}</span></>}
           </div>
           <div style={{ display:"flex", alignItems:"center", gap:9, flexShrink:0 }}>
-            <button
-              onClick={e => { e.stopPropagation(); whatsappShare(item.title, item.link); }}
-              style={{ fontSize:11, fontWeight:500, color:"#25D366", background:"none", border:"none", padding:0 }}
-            >↗</button>
-            <a
-              href={item.link} target="_blank" rel="noopener noreferrer"
-              onClick={e => e.stopPropagation()}
-              style={{ fontSize:11, fontWeight:600, color:feed.accent }}
-            >
-              {t.read} →
-            </a>
+            <button onClick={e => { e.stopPropagation(); whatsappShare(item.title, item.link); }} style={{ fontSize:11, fontWeight:500, color:"#25D366", background:"none", border:"none", padding:0 }}>↗</button>
+            <a href={item.link} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} style={{ fontSize:11, fontWeight:600, color:feed.accent }}>{t.read} →</a>
           </div>
         </div>
       </div>
     </article>
-  );
-};
-
-// ---------- Brief Card ----------
-const BriefCard = ({ item, rank, feed, t, dark, delay }) => {
-  const label = item.label || "News";
-  const ago   = timeAgo(item.pubDate);
-  const [imgErr, setImgErr] = useState(false);
-  const showImg = item.image && !imgErr;
-  return (
-    <div className="fade-up" style={{
-      background:"var(--surface)", border:"1px solid var(--border2)",
-      borderRadius:"var(--radius-lg)", overflow:"hidden", marginBottom:14,
-      animationDelay:`${delay}s`,
-    }}>
-      <div style={{ display:"flex" }}>
-        <div style={{ width:4, background:feed.accent, flexShrink:0 }} />
-        <div style={{ padding:"16px 18px", flex:1, minWidth:0 }}>
-          <div style={{ display:"flex", gap:12, alignItems:"flex-start" }}>
-            <div style={{ flex:1, minWidth:0 }}>
-              <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:9 }}>
-                <span style={{ fontFamily:"'Playfair Display',serif", fontSize:20, fontWeight:600, color:feed.accent, lineHeight:1 }}>{rank}</span>
-                <CatBadge label={label} dark={dark} size="sm" />
-              </div>
-              <div style={{ fontFamily:"'Playfair Display',serif", fontSize:15, fontWeight:400, lineHeight:1.5, color:"var(--text1)", marginBottom: item.brief ? 7 : 12 }}>
-                {item.headline}
-              </div>
-              {item.brief && (
-                <p style={{ fontSize:13, lineHeight:1.7, color:"var(--text2)", marginBottom:12 }}>{item.brief}</p>
-              )}
-            </div>
-            {showImg && (
-              <div style={{ width:80, height:80, borderRadius:10, overflow:"hidden", flexShrink:0 }}>
-                <img src={item.image} alt="" onError={() => setImgErr(true)}
-                  style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} />
-              </div>
-            )}
-          </div>
-          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-            <div style={{ display:"flex", alignItems:"center", gap:6 }}>
-              <SourceAvatar src={item.source} feed={feed} size={20} />
-              <span style={{ fontSize:11, color:"var(--text2)" }}>{sourceLabel(item.source)}</span>
-              {ago && <><span style={{ fontSize:10, color:"var(--text3)" }}>·</span><span style={{ fontSize:10, color:"var(--text3)" }}>{ago}</span></>}
-            </div>
-            <div style={{ display:"flex", gap:10, alignItems:"center" }}>
-              <button
-                onClick={() => whatsappShare(item.headline, item.link)}
-                style={{ fontSize:11, fontWeight:500, color:"#25D366", background:"none", border:"none", padding:0 }}
-              >
-                ↗ {t.share}
-              </button>
-              {item.link && (
-                <a
-                  href={item.link} target="_blank" rel="noopener noreferrer"
-                  style={{ fontSize:11, fontWeight:600, color:feed.accent, padding:"4px 11px", borderRadius:100, border:`1px solid ${feed.accent}` }}
-                >
-                  {t.read}
-                </a>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
   );
 };
 
@@ -716,31 +1083,6 @@ const SkeletonList = () => (
   </div>
 );
 
-const SkeletonBrief = () => (
-  <>
-    {[0,1,2,3].map(i => (
-      <div key={i} className="fade-up" style={{
-        background:"var(--surface)", border:"1px solid var(--border2)",
-        borderRadius:"var(--radius-lg)", overflow:"hidden", marginBottom:14,
-        animationDelay:`${i * 0.08}s`,
-      }}>
-        <div style={{ display:"flex" }}>
-          <div className="skel" style={{ width:4, flexShrink:0 }} />
-          <div style={{ padding:"16px 18px", flex:1 }}>
-            <div className="skel" style={{ width:"30%", height:10, marginBottom:11 }} />
-            <div className="skel" style={{ width:"85%", height:14, marginBottom:7 }} />
-            <div className="skel" style={{ width:"60%", height:14, marginBottom:15 }} />
-            <div style={{ display:"flex", gap:8 }}>
-              <div className="skel" style={{ width:52, height:10 }} />
-              <div className="skel" style={{ width:38, height:10 }} />
-            </div>
-          </div>
-        </div>
-      </div>
-    ))}
-  </>
-);
-
 // ---------- Empty / Error ----------
 const EmptyState = ({ icon, title, sub, children }) => (
   <div style={{ textAlign:"center", padding:"5rem 0" }}>
@@ -755,39 +1097,31 @@ const EmptyState = ({ icon, title, sub, children }) => (
 // ---------- MAIN APP ----------
 // ============================================================
 export default function App() {
-  const [dark, setDark]     = useState(false);
-  const [lang, setLang]     = useState("en");
-  const t  = TRANSLATIONS[lang];
+  const [dark, setDark]         = useState(false);
+  const [lang, setLang]         = useState("en");
+  const t = TRANSLATIONS[lang];
 
-  // Feed state
-  const [news, setNews]         = useState([]);
-  const [status, setStatus]     = useState("idle");
+  const [news, setNews]             = useState([]);
+  const [status, setStatus]         = useState("idle");
   const [activeFeed, setActiveFeed] = useState(null);
 
-  // UI state
-  const [activeTab, setActiveTab]   = useState("feed");
-  const [activeLabel, setActiveLabel] = useState("All");
+  // "feed" | "briefing"
+  const [activeTab, setActiveTab]       = useState("feed");
+  const [activeLabel, setActiveLabel]   = useState("All");
   const [activeSource, setActiveSource] = useState("All");
-  const [search, setSearch]           = useState("");
-  const [viewMode, setViewMode]       = useState("grid");
-  const [advOpen, setAdvOpen]         = useState(false);
+  const [search, setSearch]             = useState("");
+  const [viewMode, setViewMode]         = useState("grid");
+  const [advOpen, setAdvOpen]           = useState(false);
 
-  // Brief state
-  const [summary, setSummary]           = useState(null);
-  const [summaryStatus, setSummaryStatus] = useState("idle");
+  const [tamilSubActive, setTamilSubActive] = useState(false);
+  const [tamilSubNews, setTamilSubNews]     = useState([]);
+  const [tamilSubStatus, setTamilSubStatus] = useState("idle");
 
-  // Tamil sub-feed state
-  const [tamilSubActive, setTamilSubActive]   = useState(false);
-  const [tamilSubNews, setTamilSubNews]       = useState([]);
-  const [tamilSubStatus, setTamilSubStatus]   = useState("idle");
-
-  // Derived
   const currentFeed   = activeFeed || FEEDS[0];
   const displayNews   = tamilSubActive ? tamilSubNews : news;
   const displayStatus = tamilSubActive ? tamilSubStatus : status;
   const useCardLayout = activeFeed?.key !== "tamil" && !tamilSubActive;
 
-  // Dark mode side effect
   useEffect(() => { applyTheme(dark); }, [dark]);
 
   const availableLabels = useMemo(() => {
@@ -815,7 +1149,6 @@ export default function App() {
     setActiveTab("feed");
     setActiveLabel("All"); setActiveSource("All"); setSearch("");
     setStatus("loading"); setNews([]);
-    setSummary(null); setSummaryStatus("idle");
     setTamilSubActive(false); setTamilSubNews([]); setTamilSubStatus("idle");
     try {
       const res = await fetch(API_BASE + feed.endpoint);
@@ -824,18 +1157,6 @@ export default function App() {
       setStatus("success");
     } catch { setStatus("error"); }
   }, []);
-
-  const fetchSummary = useCallback(async (feed) => {
-    setActiveTab("brief");
-    if (summary && summaryStatus === "success") return;
-    setSummaryStatus("loading");
-    try {
-      const res = await fetch(`${API_BASE}/news/summary/${feed.summaryKey}`);
-      if (!res.ok) throw new Error();
-      setSummary(await res.json());
-      setSummaryStatus("success");
-    } catch { setSummaryStatus("error"); }
-  }, [summary, summaryStatus]);
 
   const handleTamilSub = useCallback(async () => {
     if (tamilSubActive) {
@@ -855,11 +1176,30 @@ export default function App() {
     } catch { setTamilSubStatus("error"); }
   }, [tamilSubActive, tamilSubNews]);
 
-  // Boot — fetch default feed
   useEffect(() => { fetchNews(FEEDS[0]); }, [fetchNews]);
 
   const showFilters = status === "success" || tamilSubActive;
   const showHero    = status === "success" || status === "loading";
+
+  const TabPill = ({ id, label, icon }) => {
+    const on = activeTab === id;
+    return (
+      <button
+        onClick={() => setActiveTab(id)}
+        style={{
+          fontSize:12, fontWeight: on ? 600 : 400,
+          color: on ? currentFeed.ink : "var(--text3)",
+          background: on ? currentFeed.fill : "transparent",
+          border: on ? `1px solid ${currentFeed.accent}40` : "1px solid transparent",
+          borderRadius:100, padding:"6px 16px",
+          display:"flex", alignItems:"center", gap:5,
+          transition:"all 0.18s", cursor:"pointer", whiteSpace:"nowrap",
+        }}
+      >
+        {icon} {label}
+      </button>
+    );
+  };
 
   return (
     <div style={{
@@ -869,7 +1209,7 @@ export default function App() {
     }}>
       <div style={{ maxWidth:1040, margin:"0 auto", padding:"0 20px 64px" }}>
 
-        <Header lang={lang} setLang={setLang} dark={dark} setDark={setDark} t={t} />
+        <Header dark={dark} setDark={setDark} t={t} />
 
         <FeedTabs
           activeFeed={activeFeed} onSelect={fetchNews}
@@ -878,54 +1218,32 @@ export default function App() {
         />
 
         {showHero && (
-          <HeroBrief
+          <HeroBanner
             activeFeed={activeFeed}
-            onReadBrief={() => fetchSummary(currentFeed)}
+            onReadBriefing={() => setActiveTab("briefing")}
             t={t}
           />
         )}
 
-        {/* ---- BRIEF VIEW ---- */}
-        {activeTab === "brief" && activeFeed && (
-          <div style={{ maxWidth:700, margin:"0 auto" }}>
-            {summaryStatus === "loading" && (
-              <>
-                <div style={{ fontSize:12, color:"var(--text3)", letterSpacing:0.4, marginBottom:16 }}>{t.generatingBrief}</div>
-                <SkeletonBrief />
-              </>
-            )}
-            {summaryStatus === "error" && <EmptyState icon="✦" title={t.failedSummary} sub={t.geminiError} />}
-            {summaryStatus === "success" && summary && (
-              <>
-                <div style={{
-                  display:"flex", justifyContent:"space-between", alignItems:"flex-start",
-                  marginBottom:24, paddingBottom:16, borderBottom:"1px solid var(--border)",
-                }}>
-                  <div>
-                    <div style={{ fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:0.6, color:"var(--text3)", marginBottom:3 }}>
-                      {t.todaysBriefLabel} · {t.feeds[activeFeed.key]}
-                    </div>
-                    <div style={{ fontSize:12, color:"var(--text3)" }}>{formatDate(summary.generatedAt)}</div>
-                  </div>
-                  {summary.fallback && (
-                    <span style={{ fontSize:10, fontWeight:500, padding:"4px 10px", borderRadius:100, background:"var(--surface2)", color:"var(--text3)", border:"1px solid var(--border)" }}>
-                      {t.keywordMode}
-                    </span>
-                  )}
-                </div>
-                {summary.items.map((item, idx) => (
-                  <BriefCard
-                    key={item.rank || idx} item={item} rank={item.rank}
-                    feed={currentFeed} t={t} dark={dark}
-                    delay={Math.min(idx * 0.04, 0.4)}
-                  />
-                ))}
-                <div style={{ textAlign:"center", padding:"20px 0 8px", fontSize:11, color:"var(--text3)" }}>
-                  {t.generatedNote} {news.length} {t.articles} · {t.poweredBy}
-                </div>
-              </>
-            )}
+        {(status === "success" || activeTab === "briefing") && (
+          <div style={{
+            display:"flex", gap:6, marginBottom:20,
+            padding:"4px", background:"var(--surface)",
+            border:"1px solid var(--border)", borderRadius:100,
+            width:"fit-content", flexWrap:"wrap",
+          }}>
+            <TabPill id="feed"     label={t.allStories} icon="📋" />
+            <TabPill id="briefing" label={t.briefing}   icon="✦"  />
           </div>
+        )}
+
+        {/* ---- BRIEFING VIEW ---- */}
+        {activeTab === "briefing" && activeFeed && (
+          <BriefingView
+            feedKey={activeFeed.key}
+            digestKey={activeFeed.digestKey}
+            t={t}
+          />
         )}
 
         {/* ---- FEED VIEW ---- */}
@@ -958,14 +1276,12 @@ export default function App() {
               showToggle={displayStatus === "success"}
             />
 
-            {/* States */}
             {status === "idle" && (
               <EmptyState icon="📰" title={t.whatRead} sub={t.chooseFeed}>
                 <div style={{ display:"flex", justifyContent:"center", gap:10, flexWrap:"wrap" }}>
                   {FEEDS.map(f => (
                     <button key={f.key} onClick={() => fetchNews(f)} style={{
-                      fontSize:13, fontWeight:500, padding:"9px 22px",
-                      borderRadius:100, border:"none",
+                      fontSize:13, fontWeight:500, padding:"9px 22px", borderRadius:100, border:"none",
                       background:f.fill, color:f.ink, cursor:"pointer",
                     }}>
                       {t.feeds[f.key]}
@@ -979,41 +1295,27 @@ export default function App() {
               useCardLayout && viewMode === "grid" ? <SkeletonGrid /> : <SkeletonList />
             )}
 
-            {displayStatus === "error" && (
-              <EmptyState icon="⚠️" title={t.failedLoad} sub={t.backendError} />
-            )}
+            {displayStatus === "error" && <EmptyState icon="⚠️" title={t.failedLoad} sub={t.backendError} />}
 
             {displayStatus === "success" && filteredNews.length === 0 && (
               <EmptyState
-                icon="🔍"
-                title={t.noArticles}
+                icon="🔍" title={t.noArticles}
                 sub={search || activeLabel !== "All" || activeSource !== "All" ? t.tryDifferent : t.tryLater}
               />
             )}
 
-            {/* Card grid */}
             {displayStatus === "success" && filteredNews.length > 0 && useCardLayout && viewMode === "grid" && (
               <div className="card-grid">
                 {filteredNews.map((item, i) => (
-                  <NewsCard
-                    key={item.link || i} item={item}
-                    feed={currentFeed} t={t} dark={dark}
-                    delay={Math.min(i * 0.04, 0.4)}
-                  />
+                  <NewsCard key={item.link || i} item={item} feed={currentFeed} t={t} dark={dark} delay={Math.min(i * 0.04, 0.4)} />
                 ))}
               </div>
             )}
 
-            {/* List feed */}
             {displayStatus === "success" && filteredNews.length > 0 && (!useCardLayout || viewMode === "list") && (
               <div>
                 {filteredNews.map((item, i) => (
-                  <ListItem
-                    key={item.link || i} item={item}
-                    feed={tamilSubActive ? TAMIL_FEED : currentFeed}
-                    t={t} dark={dark}
-                    delay={Math.min(i * 0.03, 0.3)}
-                  />
+                  <ListItem key={item.link || i} item={item} feed={tamilSubActive ? TAMIL_FEED : currentFeed} t={t} dark={dark} delay={Math.min(i * 0.03, 0.3)} />
                 ))}
               </div>
             )}
