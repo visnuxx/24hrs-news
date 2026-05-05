@@ -100,7 +100,6 @@ const VALID_LABELS = [
 ];
 
 const feedLocks = {};
-const summaryLocks = {};
 
 const KEYWORD_RULES = [
   {
@@ -227,25 +226,16 @@ function keywordLabel(title) {
 
 // ── image extraction ──────────────────────────────────────────────────────────
 
-/**
- * Tries every known RSS image location in order and returns the first URL found.
- * Returns null if no image is found.
- */
 function extractImage(item) {
-  // 1. <media:content url="..."> or <media:content><url>...</url></media:content>
   const mediaContent = item["media:content"];
   if (mediaContent) {
-    // Array of media:content nodes
     const nodes = Array.isArray(mediaContent) ? mediaContent : [mediaContent];
     for (const node of nodes) {
-      // Attribute form: node.$ = { url: "...", medium: "image", ... }
       if (node.$ && node.$.url && isImageUrl(node.$.url)) return node.$.url;
-      // Text form
       if (typeof node === "string" && isImageUrl(node)) return node;
     }
   }
 
-  // 2. <media:thumbnail url="...">
   const mediaThumbnail = item["media:thumbnail"];
   if (mediaThumbnail) {
     const nodes = Array.isArray(mediaThumbnail) ? mediaThumbnail : [mediaThumbnail];
@@ -255,7 +245,6 @@ function extractImage(item) {
     }
   }
 
-  // 3. <enclosure url="..." type="image/...">
   const enclosure = item.enclosure;
   if (enclosure) {
     const nodes = Array.isArray(enclosure) ? enclosure : [enclosure];
@@ -264,14 +253,12 @@ function extractImage(item) {
     }
   }
 
-  // 4. <image><url>...</url></image>  (channel-level sometimes appears in items too)
   if (item.image) {
     const img = Array.isArray(item.image) ? item.image[0] : item.image;
     const url = img.url ? (Array.isArray(img.url) ? img.url[0] : img.url) : null;
     if (url && isImageUrl(url)) return url;
   }
 
-  // 5. Scan <description> HTML for the first <img src="...">
   const desc = item.description
     ? Array.isArray(item.description) ? item.description[0] : item.description
     : null;
@@ -280,7 +267,6 @@ function extractImage(item) {
     if (imgMatch && isImageUrl(imgMatch[1])) return imgMatch[1];
   }
 
-  // 6. <content:encoded> — full article HTML, grab first img
   const contentEncoded = item["content:encoded"];
   if (contentEncoded) {
     const raw = Array.isArray(contentEncoded) ? contentEncoded[0] : contentEncoded;
@@ -294,7 +280,6 @@ function extractImage(item) {
 function isImageUrl(url) {
   if (!url || typeof url !== "string") return false;
   if (!url.startsWith("http")) return false;
-  // Accept any URL from a known CDN/image path, or explicit image extensions
   return /\.(jpg|jpeg|png|webp|gif)(\?.*)?$/i.test(url) ||
     url.includes("/image/") ||
     url.includes("/images/") ||
@@ -305,9 +290,9 @@ function isImageUrl(url) {
     url.includes("wsj.net") ||
     url.includes("bbci.co.uk") ||
     url.includes("thehindu") ||
-    url.includes("ichef") ||        // BBC image CDN
+    url.includes("ichef") ||
     url.includes("cloudfront") ||
-    url.includes("wp-content");     // WordPress sites
+    url.includes("wp-content");
 }
 
 // ── cache helpers ─────────────────────────────────────────────────────────────
@@ -348,13 +333,9 @@ function writeCache(feedKey, articles) {
 async function parseFeed({ url, source }) {
   const response = await axios.get(url, {
     timeout: 8000,
-    headers: {
-      // Some feeds block default axios UA; mimic a browser
-      "User-Agent": "Mozilla/5.0 (compatible; NewsReader/1.0)",
-    },
+    headers: { "User-Agent": "Mozilla/5.0 (compatible; NewsReader/1.0)" },
   });
 
-  // xml2js needs to preserve namespaced attributes for media:content etc.
   const parser = new xml2js.Parser({
     explicitArray: true,
     mergeAttrs: false,
@@ -369,7 +350,6 @@ async function parseFeed({ url, source }) {
     link:    Array.isArray(item.link)    ? item.link[0]    : (item.link    || ""),
     pubDate: Array.isArray(item.pubDate) ? item.pubDate[0] : (item.pubDate || null),
     source,
-    // NEW: extract image from all possible RSS fields
     image: extractImage(item),
   }));
 }
@@ -471,52 +451,159 @@ app.delete("/cache/:feedKey", (req, res) => {
   res.json({ ok: true, message: `Cache cleared for "${req.params.feedKey}"` });
 });
 
-// ── summary helpers ───────────────────────────────────────────────────────────
+// ──────────────────────────────────────────────────────────────────────────────
+// BRIEFING  (midnight → now, Gemini-summarized, editorial bullet-point format)
+// ──────────────────────────────────────────────────────────────────────────────
 
-async function generateSummary(feedKey) {
+const briefingLocks = {};
+const BRIEFING_TTL_MS = 60 * 60 * 1000; // 1 hour cache
+
+function getBriefingCachePath(feedKey) {
+  return path.join(CACHE_DIR, `briefing-${feedKey}.json`);
+}
+
+function readBriefingCache(feedKey) {
+  const p = getBriefingCachePath(feedKey);
+  if (!fs.existsSync(p)) return null;
+  try {
+    const raw = JSON.parse(fs.readFileSync(p, "utf8"));
+    const age = Date.now() - new Date(raw.generatedAt).getTime();
+
+    // Invalidate if it crossed midnight since generation
+    const genDate = new Date(raw.generatedAt);
+    const now = new Date();
+    const sameDay =
+      genDate.getFullYear() === now.getFullYear() &&
+      genDate.getMonth() === now.getMonth() &&
+      genDate.getDate() === now.getDate();
+
+    if (age < BRIEFING_TTL_MS && sameDay) {
+      console.log(`[briefing] Cache HIT for "${feedKey}" — ${Math.round(age / 60000)}m old`);
+      return raw;
+    }
+    console.log(`[briefing] Cache STALE for "${feedKey}"`);
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function writeBriefingCache(feedKey, briefing) {
+  fs.writeFileSync(
+    getBriefingCachePath(feedKey),
+    JSON.stringify(briefing, null, 2),
+    "utf8"
+  );
+  console.log(`[briefing] Cache WRITTEN for "${feedKey}"`);
+}
+
+// Fallback grouping when Gemini fails
+function buildKeywordFallback(articles, feedKey) {
+  const groups = {};
+  for (const a of articles) {
+    const label = a.label || "World";
+    if (!groups[label]) groups[label] = [];
+    groups[label].push(a);
+  }
+
+  const sections = Object.entries(groups)
+    .sort((a, b) => b[1].length - a[1].length)
+    .slice(0, 8)
+    .map(([label, items], idx) => ({
+      number: idx + 1,
+      heading: label,
+      summary: `${items.length} ${items.length === 1 ? "story" : "stories"} reported in ${label.toLowerCase()} today.`,
+      bullets: items.slice(0, 6).map((a) => ({
+        text: a.title,
+        source: a.source,
+        link: a.link,
+        pubDate: a.pubDate,
+      })),
+    }));
+
+  return {
+    generatedAt: new Date().toISOString(),
+    feedKey,
+    fallback: true,
+    totalArticles: articles.length,
+    sections,
+  };
+}
+
+async function generateBriefing(feedKey) {
   const cached = readCache(feedKey);
   const articles = cached || [];
 
-  if (articles.length === 0) {
-    return { generatedAt: new Date().toISOString(), items: [] };
+  // Filter midnight → now
+  const now = new Date();
+  const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+
+  const todayArticles = articles.filter((a) => {
+    if (!a.pubDate) return false;
+    const d = new Date(a.pubDate);
+    return d >= midnight && d <= now;
+  });
+
+  if (todayArticles.length === 0) {
+    return {
+      generatedAt: new Date().toISOString(),
+      feedKey,
+      from: midnight.toISOString(),
+      to: now.toISOString(),
+      totalArticles: 0,
+      sections: [],
+    };
   }
 
   const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    console.warn("[briefing] No GEMINI_API_KEY — using fallback");
+    return buildKeywordFallback(todayArticles, feedKey);
+  }
 
-  const inputList = articles.slice(0, 80).map((a, idx) => ({
+  const inputList = todayArticles.slice(0, 60).map((a, idx) => ({
     idx,
     title: a.title,
     source: a.source,
     label: a.label || "World",
+    pubDate: a.pubDate,
   }));
 
   const feedLabel =
     feedKey === "tamilNadu" ? "Tamil Nadu" :
-    feedKey === "tamil"     ? "Tamil language news from Tamil Nadu" :
+    feedKey === "tamil"     ? "Tamil-language news from Tamil Nadu" :
                               "International";
 
-  const prompt = `You are a senior news editor creating a daily briefing for ${feedLabel} news.
+  const prompt = `You are a senior editor writing today's briefing for ${feedLabel} news.
+Today is ${now.toDateString()}. Below are ${inputList.length} articles published since midnight.
 
-From the articles below, select the 10 most important, diverse, and newsworthy stories of the day.
-Avoid picking multiple articles about the exact same event — prefer variety across topics.
+Your job:
+1. Group related stories into 5–8 thematic SECTIONS (e.g., "Politics", "Global Conflict", "Markets", "Sports", "Entertainment", "Climate", "Tech & Business", "Crime & Justice"). Use natural editorial section names — not just rigid categories. Order them by importance (top stories first).
+2. For each section, write:
+   - A short, intelligent HEADING (3–6 words, editorial tone — not just a label)
+   - A 1-sentence SUMMARY (the overall story arc of the section)
+   - 3–6 BULLET points. Each bullet must:
+       • Be one tight sentence (max 25 words)
+       • Be rewritten in your own words (do NOT copy the headline verbatim)
+       • Reference the originalIdx so the link can be attached
+3. Avoid duplicates. If two articles cover the same event, merge them into ONE bullet.
+4. Be neutral, factual, and concise — like The Economist or Axios.
 
-For each selected article write:
-- A short punchy headline (max 12 words, rewritten in your own words — not copied)
-- A 2-sentence plain-English brief explaining what happened and why it matters
-- The label category it belongs to
-
-Return ONLY valid JSON array, no markdown, no explanation:
-[
-  {
-    "rank": 1,
-    "originalIdx": <number from input>,
-    "headline": "<your rewritten headline>",
-    "brief": "<2-sentence brief>",
-    "label": "<label>",
-    "source": "<source from input>"
-  },
-  ...
-]
+Return ONLY valid JSON, no markdown, no commentary:
+{
+  "sections": [
+    {
+      "number": 1,
+      "heading": "<editorial heading>",
+      "summary": "<one-sentence section summary>",
+      "bullets": [
+        { "originalIdx": <number>, "text": "<rewritten bullet>" },
+        ...
+      ]
+    },
+    ...
+  ]
+}
 
 Articles:
 ${JSON.stringify(inputList)}`;
@@ -526,12 +613,15 @@ ${JSON.stringify(inputList)}`;
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
       {
         contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.4 },
+        generationConfig: {
+          temperature: 0.5,
+          maxOutputTokens: 4096,
+        },
       },
-      { timeout: 45000 }
+      { timeout: 60000 }
     );
 
-    const raw = res.data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "[]";
+    const raw = res.data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "{}";
     const clean = raw
       .replace(/^```json\s*/i, "")
       .replace(/^```\s*/i, "")
@@ -540,102 +630,81 @@ ${JSON.stringify(inputList)}`;
 
     const parsed = JSON.parse(clean);
 
-    const enriched = parsed.map((item) => {
-      const original = articles[item.originalIdx] || {};
-      return {
-        rank:     item.rank,
-        headline: item.headline,
-        brief:    item.brief,
-        label:    VALID_LABELS.includes(item.label) ? item.label : "World",
-        source:   item.source || original.source,
-        link:     original.link    || null,
-        pubDate:  original.pubDate || null,
-        image:    original.image   || null,   // pass image through to brief too
-      };
-    });
+    const sections = (parsed.sections || []).map((sec, secIdx) => ({
+      number: sec.number || secIdx + 1,
+      heading: sec.heading || "Top Stories",
+      summary: sec.summary || "",
+      bullets: (sec.bullets || [])
+        .map((b) => {
+          const original = todayArticles[b.originalIdx];
+          if (!original) return null;
+          return {
+            text: b.text,
+            source: original.source,
+            link: original.link,
+            pubDate: original.pubDate,
+            label: original.label || "World",
+          };
+        })
+        .filter(Boolean),
+    })).filter((sec) => sec.bullets.length > 0);
 
-    console.log(`[summary] ✅ Generated Top 10 for "${feedKey}"`);
-    return { generatedAt: new Date().toISOString(), feedKey, items: enriched };
+    console.log(`[briefing] ✅ Generated briefing for "${feedKey}" — ${sections.length} sections`);
 
-  } catch (err) {
-    console.error(`[summary] ❌ Gemini failed:`, err.message);
     return {
       generatedAt: new Date().toISOString(),
       feedKey,
-      fallback: true,
-      items: articles.slice(0, 10).map((a, i) => ({
-        rank:     i + 1,
-        headline: a.title,
-        brief:    null,
-        label:    a.label || "World",
-        source:   a.source,
-        link:     a.link,
-        pubDate:  a.pubDate,
-        image:    a.image || null,
-      })),
+      from: midnight.toISOString(),
+      to: now.toISOString(),
+      totalArticles: todayArticles.length,
+      fallback: false,
+      sections,
     };
+
+  } catch (err) {
+    console.error(`[briefing] ❌ Gemini failed:`, err.message);
+    return buildKeywordFallback(todayArticles, feedKey);
   }
 }
 
-function getSummaryCachePath(feedKey) {
-  return path.join(CACHE_DIR, `summary-${feedKey}.json`);
-}
-
-function readSummaryCache(feedKey) {
-  const p = getSummaryCachePath(feedKey);
-  if (!fs.existsSync(p)) return null;
-  try {
-    const raw = JSON.parse(fs.readFileSync(p, "utf8"));
-    const age = Date.now() - new Date(raw.generatedAt).getTime();
-    if (age < CACHE_TTL_MS) {
-      console.log(`[summary] Cache HIT for "${feedKey}" — ${Math.round(age / 60000)}m old`);
-      return raw;
-    }
-    console.log(`[summary] Cache STALE for "${feedKey}" — regenerating`);
-    return null;
-  } catch {
-    return null;
-  }
-}
-
-function writeSummaryCache(feedKey, summary) {
-  fs.writeFileSync(
-    getSummaryCachePath(feedKey),
-    JSON.stringify(summary, null, 2),
-    "utf8"
-  );
-  console.log(`[summary] Cache WRITTEN for "${feedKey}"`);
-}
-
-app.get("/news/summary/:feedKey", async (req, res) => {
+app.get("/news/briefing/:feedKey", async (req, res) => {
   const { feedKey } = req.params;
 
   if (!FEEDS[feedKey]) {
     return res.status(404).json({ error: `Unknown feedKey: ${feedKey}` });
   }
 
-  if (summaryLocks[feedKey]) {
-    console.log(`[summary] WAITING existing summary job`);
-    return res.json(await summaryLocks[feedKey]);
+  if (briefingLocks[feedKey]) {
+    console.log(`[briefing] WAITING existing job for "${feedKey}"`);
+    return res.json(await briefingLocks[feedKey]);
   }
 
-  summaryLocks[feedKey] = (async () => {
-    const cached = readSummaryCache(feedKey);
+  briefingLocks[feedKey] = (async () => {
+    const cached = readBriefingCache(feedKey);
     if (cached) return cached;
+
     await getFeed(feedKey);
-    const summary = await generateSummary(feedKey);
-    writeSummaryCache(feedKey, summary);
-    return summary;
+
+    const briefing = await generateBriefing(feedKey);
+    writeBriefingCache(feedKey, briefing);
+    return briefing;
   })();
 
   try {
-    res.json(await summaryLocks[feedKey]);
+    res.json(await briefingLocks[feedKey]);
   } catch (err) {
-    console.error("[summary] Route error:", err.message);
-    res.status(500).json({ error: "Failed to generate summary" });
+    console.error("[briefing] Route error:", err.message);
+    res.status(500).json({ error: "Failed to generate briefing" });
   } finally {
-    delete summaryLocks[feedKey];
+    delete briefingLocks[feedKey];
   }
+});
+
+// Manual cache clear for briefing
+app.delete("/cache/briefing/:feedKey", (req, res) => {
+  const p = getBriefingCachePath(req.params.feedKey);
+  if (fs.existsSync(p)) fs.unlinkSync(p);
+  res.json({ ok: true, message: `Briefing cache cleared for "${req.params.feedKey}"` });
 });
 
 // ── warmup ────────────────────────────────────────────────────────────────────
