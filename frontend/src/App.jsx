@@ -129,7 +129,7 @@ globalStyle.textContent = `
 document.head.appendChild(globalStyle);
 
 // ---------- Constants ----------
-const API_BASE = "http://localhost:5000";
+const API_BASE = "https://two4hrs-news.onrender.com";
 
 const FEEDS = [
   { key:"tamil-nadu",    label:"Tamil Nadu",    taLabel:"தமிழ்நாடு", endpoint:"/news/tamil-nadu",    summaryKey:"tamilNadu",     digestKey:"tamilNadu",     accent:"#1D9E75", fill:"#E1F5EE", ink:"#085041" },
