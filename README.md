@@ -1,227 +1,294 @@
-# Briefed · 24hrs News
+# Briefed - 24hrs News
 
-A minimal, full-stack news aggregator that pulls the last 24 hours of headlines from RSS feeds, auto-labels each article by topic using the Gemini API (with a keyword-based fallback), and serves them through a clean React frontend.
+Briefed is a full-stack news aggregator for recent headlines. The backend collects RSS feeds, removes duplicates, labels stories with keyword rules, caches results on disk, and can generate daily editorial briefings with Gemini. The frontend is a React/Vite app with feed tabs, filtering, search, grid/list views, dark mode, and WhatsApp sharing.
 
-🔗 **Live demo:** [24hrs-news.vercel.app](https://24hrs-news.vercel.app)
-
----
+Live demo: https://24hrs-news.vercel.app
 
 ## Features
 
-- **Three news feeds** — Tamil Nadu (English), Tamil-language, and International headlines
-- **AI-powered labeling** — Gemini 2.0 Flash categorizes articles into 10 topics: Politics, Business, Technology, Sports, Crime, Entertainment, Health, Climate, World, and Conflict
-- **AI Daily Briefing** — Gemini generates an editorial-style digest with lead stories, section summaries, and grouped bullets per feed; falls back to a keyword-grouped layout if Gemini is unavailable
-- **Bilingual UI** — full English / Tamil (தமிழ்) interface toggle, with all labels, prompts, and placeholders translated
-- **Grid & List views** — switch between a card grid and a compact list layout
-- **Filter & search** — filter articles by topic label or source, and search headlines in real time
-- **Source avatars** — each article shows an initials badge for its source; Google News city bylines are resolved automatically
-- **WhatsApp share** — one-tap share button on every article
-- **Skeleton loading** — shimmer placeholders while feeds are fetching
-- **Dark / light mode** — toggle in one click; preference is applied instantly
-- **24-hour file cache** — fetched feeds and AI briefings are cached to disk so repeat requests are instant and upstream RSS sources aren't hammered
-- **Deduplication** — near-duplicate headlines from overlapping sources are removed on both the backend and frontend
-- **Keyword fallback** — if Gemini is unavailable or the API key is missing, a deterministic keyword-matching system labels articles; nothing ever breaks silently
-- **No database required** — JSON file cache only
-
----
+- Tamil Nadu, Tamil-language, and International news feeds
+- RSS fetching from BBC, Google News, The Hindu, Dinamalar, Vikatan, News18 Tamil, OneIndia, and other sources
+- 24-hour article cache stored in `backend/.cache`
+- One-hour briefing cache that resets after midnight
+- Keyword-based topic labels: Politics, Business, Technology, Sports, Crime, Entertainment, Health, Climate, World, and Conflict
+- Gemini-powered daily briefing with keyword-grouped fallback when `GEMINI_API_KEY` is missing or Gemini fails
+- Article deduplication across overlapping sources
+- Image extraction from common RSS media fields
+- Grid and list article views
+- Topic/source filters and headline search
+- Dark/light mode
+- English/Tamil UI strings
+- WhatsApp article sharing
 
 ## Project Structure
 
+```text
+24hrs News/
+|-- backend/
+|   |-- app.js
+|   |-- package.json
+|   `-- src/
+|       |-- config/
+|       |   `-- newsConfig.js
+|       |-- routes/
+|       |   |-- cacheRoutes.js
+|       |   `-- newsRoutes.js
+|       |-- services/
+|       |   |-- briefingService.js
+|       |   |-- cacheService.js
+|       |   |-- categoryService.js
+|       |   `-- feedService.js
+|       `-- utils/
+|           `-- imageUtils.js
+|-- frontend/
+|   |-- index.html
+|   |-- package.json
+|   |-- vite.config.js
+|   `-- src/
+|       |-- App.jsx
+|       |-- main.jsx
+|       |-- components/
+|       |   `-- index.jsx
+|       |-- constants/
+|       |   |-- news.js
+|       |   `-- translations.js
+|       |-- styles/
+|       |   `-- globalStyles.js
+|       `-- utils/
+|           |-- newsUtils.js
+|           `-- theme.js
+|-- README.md
+`-- .gitignore
 ```
-24hrs-news/
-├── backend/
-│   ├── app.js          # Express server — feed fetching, labeling, briefing, caching, routes
-│   └── package.json
-├── frontend/
-│   ├── index.html
-│   ├── vite.config.js
-│   └── src/
-│       ├── App.jsx     # React UI — tabs, briefing view, label chips, search, grid/list, share
-│       └── main.jsx
-└── .gitignore
-```
-
----
 
 ## Tech Stack
 
-| Layer | Technology |
-|-------|-----------|
+| Area | Tools |
+| --- | --- |
 | Frontend | React 19, Vite 8 |
-| Backend | Node.js (v18+), Express 5 |
-| AI | Google Gemini 2.0 Flash |
-| RSS parsing | xml2js, axios |
-| Styling | Vanilla CSS-in-JS (no framework) |
-| Fonts | Playfair Display, Inter (Google Fonts) |
-| Deployment | Vercel (frontend), Render (backend) |
+| Backend | Node.js, Express 5 |
+| RSS | axios, xml2js |
+| AI briefing | Gemini 2.0 Flash |
+| Styling | CSS-in-JS/global style injection |
+| Cache | Local JSON files |
 
----
+## Requirements
 
-## Prerequisites
+- Node.js 18 or newer
+- npm
+- Gemini API key, optional
 
-- **Node.js** v18 or later
-- A **Gemini API key** (optional — the app works without one via keyword fallback)
-  - Get a free key at [Google AI Studio](https://aistudio.google.com/app/apikey)
+The app still runs without a Gemini key. Articles continue to load and briefings use the built-in keyword fallback.
 
----
+## Setup
 
-## Getting Started
-
-### 1. Clone the repo
-
-```bash
-git clone https://github.com/visnuxx/24hrs-news.git
-cd 24hrs-news
-```
-
-### 2. Set up the backend
+Install backend dependencies:
 
 ```bash
 cd backend
 npm install
 ```
 
-Create a `.env` file in the `backend/` directory:
+Optional: create `backend/.env` for AI briefings:
 
 ```env
 GEMINI_API_KEY=your_api_key_here
 ```
 
-> If you skip this step the app still works — articles will be labeled using built-in keyword rules, and the AI Briefing will fall back to a keyword-grouped digest.
-
 Start the backend:
 
 ```bash
-npm run dev      # development (nodemon, auto-restarts)
-# or
-npm start        # production
+npm run dev
 ```
 
-The server runs on **http://localhost:5000**.
+When you run the backend on your machine, it runs on:
 
-### 3. Set up the frontend
+```text
+http://localhost:5000
+```
 
-In a separate terminal:
+The frontend is currently configured to use the deployed backend:
+
+```text
+https://two4hrs-news.onrender.com
+```
+
+Install frontend dependencies in another terminal:
 
 ```bash
 cd frontend
 npm install
+```
+
+Start the frontend:
+
+```bash
 npm run dev
 ```
 
-The frontend dev server runs on **http://localhost:5173** (default Vite port).
+The frontend usually runs on:
 
----
+```text
+http://localhost:5173
+```
+
+## Scripts
+
+Backend:
+
+```bash
+npm run dev
+npm start
+```
+
+Frontend:
+
+```bash
+npm run dev
+npm run build
+npm run preview
+npm run lint
+```
 
 ## API Endpoints
 
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/news/international` | International headlines (BBC, Google News) |
-| `GET` | `/news/tamil-nadu` | Tamil Nadu English headlines (The Hindu, Google News) |
-| `GET` | `/news/tamil` | Tamil-language headlines (Dinamalar, BBC Tamil, News18 Tamil, OneIndia Tamil) |
-| `GET` | `/news/briefing/:feedKey` | AI-generated daily briefing for a feed (`international`, `tamilNadu`, or `tamil`) |
-| `DELETE` | `/cache/:feedKey` | Force-clear the article cache for a feed |
-| `DELETE` | `/cache/briefing/:feedKey` | Force-clear the briefing cache for a feed |
+| Method | Endpoint | Description |
+| --- | --- | --- |
+| GET | `/news/international` | International headlines |
+| GET | `/news/tamil-nadu` | Tamil Nadu English headlines |
+| GET | `/news/tamil` | Tamil-language headlines |
+| GET | `/news/briefing/:feedKey` | Daily briefing for `international`, `tamilNadu`, or `tamil` |
+| DELETE | `/cache/:feedKey` | Clear article cache for a feed |
+| DELETE | `/cache/briefing/:feedKey` | Clear briefing cache for a feed |
 
-### Example article response item
+Example article:
 
 ```json
 {
-  "title": "India signs new trade agreement with EU",
-  "link": "https://...",
-  "pubDate": "Mon, 13 Apr 2026 08:30:00 +0000",
+  "title": "Example headline",
+  "link": "https://example.com/story",
+  "pubDate": "Wed, 06 May 2026 10:30:00 GMT",
   "source": "BBC News",
-  "label": "Business"
+  "image": "https://example.com/image.jpg",
+  "label": "World"
 }
 ```
 
-### Example briefing response
+Example briefing:
 
 ```json
 {
+  "generatedAt": "2026-05-06T10:30:00.000Z",
+  "feedKey": "international",
+  "totalArticles": 24,
+  "fallback": false,
   "sections": [
     {
-      "topic": "Politics",
-      "summary": "One-sentence section summary.",
+      "number": 1,
+      "heading": "Top Stories",
+      "summary": "A short section summary.",
       "bullets": [
-        { "title": "Headline text", "link": "https://...", "pubDate": "..." }
+        {
+          "text": "A rewritten briefing bullet.",
+          "source": "BBC News",
+          "link": "https://example.com/story",
+          "pubDate": "Wed, 06 May 2026 10:30:00 GMT",
+          "label": "World"
+        }
       ]
     }
   ]
 }
 ```
 
-### Force a cache refresh
+## Cache
+
+Article cache files are stored in:
+
+```text
+backend/.cache/
+```
+
+Article cache TTL is 24 hours. Briefing cache TTL is 1 hour and is invalidated when the day changes.
+
+Clear caches manually on your local backend:
 
 ```bash
-# Clear article cache
 curl -X DELETE http://localhost:5000/cache/international
 curl -X DELETE http://localhost:5000/cache/tamilNadu
 curl -X DELETE http://localhost:5000/cache/tamil
-
-# Clear briefing cache
 curl -X DELETE http://localhost:5000/cache/briefing/international
 curl -X DELETE http://localhost:5000/cache/briefing/tamilNadu
+curl -X DELETE http://localhost:5000/cache/briefing/tamil
 ```
 
----
+For the deployed backend, replace `http://localhost:5000` with:
+
+```text
+https://two4hrs-news.onrender.com
+```
 
 ## Configuration
 
-All configuration lives at the top of `backend/app.js`:
+Backend configuration lives in:
 
-| Constant | Default | Description |
-|----------|---------|-------------|
-| `CACHE_TTL_MS` | `86400000` (24 h) | How long a cached feed is considered fresh |
-| `CACHE_DIR` | `backend/.cache/` | Directory where JSON cache files are written |
-| `FEEDS` | BBC, Google News, The Hindu, Dinamalar, BBC Tamil, etc. | RSS sources per feed key |
-| `VALID_LABELS` | 10 topic strings | Labels Gemini is allowed to assign |
-
-To add a new RSS source, append an entry to the relevant array inside `FEEDS`:
-
-```js
-const FEEDS = {
-  international: [
-    { url: "http://feeds.bbci.co.uk/news/rss.xml", source: "BBC News" },
-    { url: "https://rss.nytimes.com/services/xml/rss/nyt/World.xml", source: "NYT" }, // new
-  ],
-  ...
-};
+```text
+backend/src/config/newsConfig.js
 ```
 
----
+Use this file to change:
 
-## How Labeling Works
+- `CACHE_DIR`
+- `CACHE_TTL_MS`
+- RSS feed lists
+- valid topic labels
 
-1. After fetching and deduplicating articles, the backend sends titles to **Gemini 2.0 Flash** in batches of 150 with a strict JSON-only prompt.
-2. If Gemini returns a valid label from the allowed list, it is used.
-3. If Gemini fails, is rate-limited, or returns an unrecognized label, the article falls back to **keyword matching** — a priority-ordered list of exact and partial keyword rules (see `KEYWORD_RULES` in `app.js`).
-4. The final labeled list is written to the disk cache and served directly on subsequent requests until the TTL expires.
+Topic keyword rules live in:
 
-## How the AI Briefing Works
+```text
+backend/src/services/categoryService.js
+```
 
-1. When `/news/briefing/:feedKey` is requested, the backend fetches the current article list for that feed.
-2. Titles are sent to **Gemini 2.0 Flash** with an editorial prompt asking for grouped sections, a lead story, bullet summaries, and one-sentence section overviews — all as strict JSON.
-3. The response is validated and written to a separate briefing cache file.
-4. Concurrent requests for the same feed await the same in-flight Gemini call (lock-based deduplication) instead of triggering duplicate API calls.
-5. If Gemini is unavailable, a keyword-grouped fallback briefing is returned instead.
+Gemini briefing logic lives in:
 
----
+```text
+backend/src/services/briefingService.js
+```
 
-## Building for Production
+Frontend feed constants live in:
+
+```text
+frontend/src/constants/news.js
+```
+
+## Production Build
+
+Build the frontend:
 
 ```bash
-# Build the frontend
 cd frontend
 npm run build
-# Output: frontend/dist/
-
-# Optionally serve the dist folder from Express by adding to app.js:
-# app.use(express.static(path.join(__dirname, '../frontend/dist')));
 ```
 
----
+The output is written to:
+
+```text
+frontend/dist/
+```
+
+Start the backend in production mode:
+
+```bash
+cd backend
+npm start
+```
+
+## Notes
+
+- `frontend/src/constants/news.js` currently uses `https://two4hrs-news.onrender.com`.
+- `http://localhost:5000` appears in this README only for local backend development.
+- If you want frontend and backend to run fully locally, change `API_BASE` to `http://localhost:5000`.
+- The backend warms all three feeds shortly after startup.
 
 ## License
 
