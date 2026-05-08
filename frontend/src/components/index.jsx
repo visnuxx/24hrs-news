@@ -1,6 +1,6 @@
 ﻿import { useState, useEffect, useMemo, useRef } from "react";
 import { API_BASE, FEEDS, TAMIL_FEED } from "../constants/news.js";
-import { getCat, sourceLabel, initials, timeAgo, formatDate, formatFullDate, whatsappShare } from "../utils/newsUtils.js";
+import { getCat, sourceLabel, initials, timeAgo, formatFullDate, whatsappShare } from "../utils/newsUtils.js";
 const CatBadge = ({ label, dark, size = "sm" }) => {
   const cat = getCat(label);
   const bg   = dark ? cat.darkBg  : cat.bg;
@@ -59,7 +59,7 @@ const Thumb = ({ label, dark, image, mode = "banner", height = 140, size = 76 })
 };
 
 // ---------- Sticky Header ----------
-const Header = ({ dark, setDark, t }) => {
+const Header = ({ dark, setDark, lang, setLang, t }) => {
   const [scrolled, setScrolled] = useState(false);
   useEffect(() => {
     const handler = () => setScrolled(window.scrollY > 8);
@@ -85,6 +85,14 @@ const Header = ({ dark, setDark, t }) => {
           <span style={{ fontSize:10, fontWeight:600, letterSpacing:0.8, textTransform:"uppercase", color:"var(--text3)", background:"var(--surface2)", border:"1px solid var(--border)", borderRadius:100, padding:"2px 8px" }}>LIVE</span>
         </div>
         <div style={{ display:"flex", gap:7 }}>
+          <button onClick={() => setLang(lang === "en" ? "ta" : "en")} style={{
+            fontSize:12, fontWeight:500, color:"var(--text2)",
+            background:"var(--surface)", border:"1px solid var(--border)",
+            borderRadius:100, padding:"6px 12px", letterSpacing:0.2,
+            transition:"all 0.15s",
+          }}>
+            {lang === "en" ? "தமிழ்" : "English"}
+          </button>
           <button onClick={() => setDark(d => !d)} style={{
             fontSize:12, fontWeight:500, color:"var(--text2)",
             background:"var(--surface)", border:"1px solid var(--border)",
@@ -177,7 +185,7 @@ const HeroBanner = ({ activeFeed, onReadBriefing, t }) => (
 const toSlug = (str) => str.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
 // ---------- Briefing Masthead ----------
-const BriefingMasthead = ({ feedLabel, totalArticles, t }) => {
+const BriefingMasthead = ({ feedLabel, totalArticles }) => {
   const dateStr = formatFullDate(new Date().toISOString());
   const now = new Date();
   const readMins = totalArticles ? Math.max(3, Math.round(totalArticles / 18)) : null;
@@ -509,7 +517,7 @@ const BriefingView = ({ feedKey, digestKey, t }) => {
     const slugs = digest.sections.map(s => toSlug(s.heading));
 
     const observers = [];
-    slugs.forEach((slug, i) => {
+    slugs.forEach((slug) => {
       const el = document.getElementById(`section-${slug}`);
       if (!el) return;
       const obs = new IntersectionObserver(
@@ -537,7 +545,6 @@ const BriefingView = ({ feedKey, digestKey, t }) => {
       <BriefingMasthead
         feedLabel={t.feeds[feedKey] || feedKey}
         totalArticles={digest?.totalArticles}
-        t={t}
       />
 
       {status === "loading" && (
@@ -706,7 +713,7 @@ const FilterBar = ({
 };
 
 // ---------- Feed Meta Bar ----------
-const FeedMeta = ({ label, count, t, viewMode, setViewMode, showToggle }) => (
+const FeedMeta = ({ label, count, t, viewMode, setViewMode, lastUpdated, showToggle }) => (
   <div style={{
     display:"flex", alignItems:"center", justifyContent:"space-between",
     marginBottom:20, paddingBottom:12, borderBottom:"1px solid var(--border)",
@@ -714,6 +721,7 @@ const FeedMeta = ({ label, count, t, viewMode, setViewMode, showToggle }) => (
     <span style={{ fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:0.5, color:"var(--text3)" }}>{label}</span>
     <div style={{ display:"flex", alignItems:"center", gap:12 }}>
       {showToggle && <span style={{ fontSize:12, color:"var(--text3)" }}>{count} {t.articles}</span>}
+      {showToggle && lastUpdated && <span style={{ fontSize:12, color:"var(--text3)" }}>{t.updated} {lastUpdated}</span>}
       {showToggle && (
         <div style={{ display:"flex", gap:3, background:"var(--surface)", border:"1px solid var(--border)", borderRadius:"var(--radius-sm)", padding:3 }}>
           {[

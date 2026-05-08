@@ -1,4 +1,4 @@
-﻿export const API_BASE = "https://two4hrs-news.onrender.com";
+export const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
 export const FEEDS = [
   { key:"tamil-nadu",    label:"Tamil Nadu",    taLabel:"தமிழ்நாடு", endpoint:"/news/tamil-nadu",    summaryKey:"tamilNadu",     digestKey:"tamilNadu",     accent:"#1D9E75", fill:"#E1F5EE", ink:"#085041" },
@@ -20,5 +20,3 @@ export const CATEGORIES = {
   Conflict:      { bg:"#FEE2E2", ink:"#991B1B", darkBg:"#501313", darkInk:"#FCA5A5", icon:"⚔" },
   News:          { bg:"#F3F4F6", ink:"#374151", darkBg:"#2C2C2A", darkInk:"#D1D5DB", icon:"📰" },
 };
-
-

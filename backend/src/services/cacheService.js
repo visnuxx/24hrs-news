@@ -13,10 +13,10 @@ function readCache(feedKey) {
     const raw = JSON.parse(fs.readFileSync(cachePath, "utf8"));
     const age = Date.now() - raw.cachedAt;
     if (age < CACHE_TTL_MS) {
-      console.log(`[cache] HIT for "${feedKey}" â€” ${Math.round(age / 60000)}m old`);
+      console.log(`[cache] HIT for "${feedKey}" - ${Math.round(age / 60000)}m old`);
       return raw.articles;
     }
-    console.log(`[cache] STALE for "${feedKey}" â€” refreshing`);
+    console.log(`[cache] STALE for "${feedKey}" - refreshing`);
     return null;
   } catch {
     return null;
@@ -30,7 +30,7 @@ function writeCache(feedKey, articles) {
     JSON.stringify({ cachedAt: Date.now(), articles }, null, 2),
     "utf8"
   );
-  console.log(`[cache] WRITTEN for "${feedKey}" â€” ${articles.length} articles`);
+  console.log(`[cache] WRITTEN for "${feedKey}" - ${articles.length} articles`);
 }
 
 module.exports = { getCachePath, readCache, writeCache };

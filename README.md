@@ -1,64 +1,35 @@
 # Briefed - 24hrs News
 
-Briefed is a full-stack news aggregator for recent headlines. The backend collects RSS feeds, removes duplicates, labels stories with keyword rules, caches results on disk, and can generate daily editorial briefings with Gemini. The frontend is a React/Vite app with feed tabs, filtering, search, grid/list views, dark mode, and WhatsApp sharing.
+Briefed is a full-stack news briefing app for recent Tamil Nadu, Tamil-language, and international headlines. It fetches public RSS feeds, removes duplicate stories, labels topics, caches results locally, and generates an optional daily editorial briefing with Gemini.
 
 Live demo: https://24hrs-news.vercel.app
 
+## Why This Project Matters
+
+The project is built like a practical newsroom dashboard: it can still serve news when AI is unavailable, keeps free API usage under control with caching, and gives readers fast filters, search, source labels, dark mode, Tamil UI text, and WhatsApp sharing.
+
 ## Features
 
-- Tamil Nadu, Tamil-language, and International news feeds
-- RSS fetching from BBC, Google News, The Hindu, Dinamalar, Vikatan, News18 Tamil, OneIndia, and other sources
+- Tamil Nadu, Tamil-language, and international news feeds
+- RSS aggregation from BBC, Google News, The Hindu, Dinamalar, Vikatan, News18 Tamil, OneIndia, and more
 - 24-hour article cache stored in `backend/.cache`
-- One-hour briefing cache that resets after midnight
-- Keyword-based topic labels: Politics, Business, Technology, Sports, Crime, Entertainment, Health, Climate, World, and Conflict
-- Gemini-powered daily briefing with keyword-grouped fallback when `GEMINI_API_KEY` is missing or Gemini fails
-- Article deduplication across overlapping sources
-- Image extraction from common RSS media fields
-- Grid and list article views
-- Topic/source filters and headline search
-- Dark/light mode
-- English/Tamil UI strings
-- WhatsApp article sharing
+- One-hour briefing cache that also resets after midnight
+- Gemini-powered daily briefing with a keyword-grouped fallback
+- Quota-safe Gemini behavior: no Gemini call is made while a valid briefing cache exists
+- Article deduplication across overlapping RSS sources
+- Topic/source filters, headline search, grid/list views, dark mode, and Tamil/English UI toggle
+- Free-tier friendly deployment with Vercel frontend and Render backend
 
-## Project Structure
+## Architecture
 
 ```text
-24hrs News/
-|-- backend/
-|   |-- app.js
-|   |-- package.json
-|   `-- src/
-|       |-- config/
-|       |   `-- newsConfig.js
-|       |-- routes/
-|       |   |-- cacheRoutes.js
-|       |   `-- newsRoutes.js
-|       |-- services/
-|       |   |-- briefingService.js
-|       |   |-- cacheService.js
-|       |   |-- categoryService.js
-|       |   `-- feedService.js
-|       `-- utils/
-|           `-- imageUtils.js
-|-- frontend/
-|   |-- index.html
-|   |-- package.json
-|   |-- vite.config.js
-|   `-- src/
-|       |-- App.jsx
-|       |-- main.jsx
-|       |-- components/
-|       |   `-- index.jsx
-|       |-- constants/
-|       |   |-- news.js
-|       |   `-- translations.js
-|       |-- styles/
-|       |   `-- globalStyles.js
-|       `-- utils/
-|           |-- newsUtils.js
-|           `-- theme.js
-|-- README.md
-`-- .gitignore
+React/Vite frontend
+  -> Express API
+    -> RSS feed fetchers
+    -> local JSON cache
+    -> keyword labels
+    -> optional Gemini briefing
+    -> keyword fallback when Gemini is missing, quota-limited, or unavailable
 ```
 
 ## Tech Stack
@@ -68,19 +39,20 @@ Live demo: https://24hrs-news.vercel.app
 | Frontend | React 19, Vite 8 |
 | Backend | Node.js, Express 5 |
 | RSS | axios, xml2js |
-| AI briefing | Gemini 2.0 Flash |
+| AI briefing | Gemini 2.0 Flash API, optional |
 | Styling | CSS-in-JS/global style injection |
 | Cache | Local JSON files |
+| Tests | Node built-in test runner |
 
 ## Requirements
 
 - Node.js 18 or newer
 - npm
-- Gemini API key, optional
+- Optional free Gemini API key
 
-The app still runs without a Gemini key. Articles continue to load and briefings use the built-in keyword fallback.
+The app works without Gemini. When `GEMINI_API_KEY` is missing, invalid, quota-limited, or temporarily unavailable, the backend returns a keyword-grouped briefing fallback.
 
-## Setup
+## Local Setup
 
 Install backend dependencies:
 
@@ -89,11 +61,13 @@ cd backend
 npm install
 ```
 
-Optional: create `backend/.env` for AI briefings:
+Create a backend env file:
 
-```env
-GEMINI_API_KEY=your_api_key_here
+```bash
+copy .env.example .env
 ```
+
+Set `GEMINI_API_KEY` only if you want AI-generated briefings. Leave it blank for fallback mode.
 
 Start the backend:
 
@@ -101,16 +75,10 @@ Start the backend:
 npm run dev
 ```
 
-When you run the backend on your machine, it runs on:
+The backend defaults to:
 
 ```text
 http://localhost:5000
-```
-
-The frontend is currently configured to use the deployed backend:
-
-```text
-https://two4hrs-news.onrender.com
 ```
 
 Install frontend dependencies in another terminal:
@@ -118,6 +86,12 @@ Install frontend dependencies in another terminal:
 ```bash
 cd frontend
 npm install
+```
+
+Create a frontend env file:
+
+```bash
+copy .env.example .env
 ```
 
 Start the frontend:
@@ -132,6 +106,21 @@ The frontend usually runs on:
 http://localhost:5173
 ```
 
+## Environment Variables
+
+Backend:
+
+| Name | Required | Default | Notes |
+| --- | --- | --- | --- |
+| `PORT` | No | `5000` | Render sets this automatically in production. |
+| `GEMINI_API_KEY` | No | empty | Optional free Gemini key for AI briefings. |
+
+Frontend:
+
+| Name | Required | Default | Notes |
+| --- | --- | --- | --- |
+| `VITE_API_BASE_URL` | No | `http://localhost:5000` | Set this to the deployed backend URL on Vercel. |
+
 ## Scripts
 
 Backend:
@@ -139,6 +128,7 @@ Backend:
 ```bash
 npm run dev
 npm start
+npm test
 ```
 
 Frontend:
@@ -146,20 +136,31 @@ Frontend:
 ```bash
 npm run dev
 npm run build
-npm run preview
 npm run lint
+npm run preview
 ```
 
 ## API Endpoints
 
 | Method | Endpoint | Description |
 | --- | --- | --- |
+| GET | `/health` | Basic backend health check |
 | GET | `/news/international` | International headlines |
 | GET | `/news/tamil-nadu` | Tamil Nadu English headlines |
 | GET | `/news/tamil` | Tamil-language headlines |
 | GET | `/news/briefing/:feedKey` | Daily briefing for `international`, `tamilNadu`, or `tamil` |
 | DELETE | `/cache/:feedKey` | Clear article cache for a feed |
 | DELETE | `/cache/briefing/:feedKey` | Clear briefing cache for a feed |
+
+Example health response:
+
+```json
+{
+  "status": "ok",
+  "uptime": 42,
+  "timestamp": "2026-05-08T10:30:00.000Z"
+}
+```
 
 Example article:
 
@@ -174,121 +175,83 @@ Example article:
 }
 ```
 
-Example briefing:
+## Gemini Free API Usage
 
-```json
-{
-  "generatedAt": "2026-05-06T10:30:00.000Z",
-  "feedKey": "international",
-  "totalArticles": 24,
-  "fallback": false,
-  "sections": [
-    {
-      "number": 1,
-      "heading": "Top Stories",
-      "summary": "A short section summary.",
-      "bullets": [
-        {
-          "text": "A rewritten briefing bullet.",
-          "source": "BBC News",
-          "link": "https://example.com/story",
-          "pubDate": "Wed, 06 May 2026 10:30:00 GMT",
-          "label": "World"
-        }
-      ]
-    }
-  ]
-}
-```
+Gemini is used carefully because free API quota is limited:
 
-## Cache
+- Briefings are cached for one hour.
+- Briefing cache also expires when the date changes.
+- The backend does not call Gemini when a valid briefing cache exists.
+- Gemini input is capped to the latest 60 same-day articles.
+- If Gemini fails, returns quota errors, or the key is absent, the app uses the built-in keyword fallback.
+- API keys are never logged or committed.
 
-Article cache files are stored in:
+## Free Deployment
+
+Frontend: deploy `frontend/` to Vercel free tier.
+
+Set this Vercel env var:
 
 ```text
-backend/.cache/
+VITE_API_BASE_URL=https://your-render-backend.onrender.com
 ```
 
-Article cache TTL is 24 hours. Briefing cache TTL is 1 hour and is invalidated when the day changes.
+Backend: deploy `backend/` to Render free tier.
 
-Clear caches manually on your local backend:
-
-```bash
-curl -X DELETE http://localhost:5000/cache/international
-curl -X DELETE http://localhost:5000/cache/tamilNadu
-curl -X DELETE http://localhost:5000/cache/tamil
-curl -X DELETE http://localhost:5000/cache/briefing/international
-curl -X DELETE http://localhost:5000/cache/briefing/tamilNadu
-curl -X DELETE http://localhost:5000/cache/briefing/tamil
-```
-
-For the deployed backend, replace `http://localhost:5000` with:
+Set this Render env var only if using Gemini:
 
 ```text
-https://two4hrs-news.onrender.com
+GEMINI_API_KEY=your_free_gemini_key
 ```
 
-## Configuration
+Free-tier limitations to expect:
 
-Backend configuration lives in:
+- Render free backend can sleep and take a moment to wake up.
+- Public RSS sources can rate-limit or change feeds.
+- Gemini free quota can be exhausted; fallback mode keeps the app usable.
 
-```text
-backend/src/config/newsConfig.js
-```
+## Test And Build
 
-Use this file to change:
-
-- `CACHE_DIR`
-- `CACHE_TTL_MS`
-- RSS feed lists
-- valid topic labels
-
-Topic keyword rules live in:
-
-```text
-backend/src/services/categoryService.js
-```
-
-Gemini briefing logic lives in:
-
-```text
-backend/src/services/briefingService.js
-```
-
-Frontend feed constants live in:
-
-```text
-frontend/src/constants/news.js
-```
-
-## Production Build
-
-Build the frontend:
-
-```bash
-cd frontend
-npm run build
-```
-
-The output is written to:
-
-```text
-frontend/dist/
-```
-
-Start the backend in production mode:
+Run backend tests:
 
 ```bash
 cd backend
-npm start
+npm test
+```
+
+Run frontend checks:
+
+```bash
+cd frontend
+npm run lint
+npm run build
+```
+
+## Project Structure
+
+```text
+24hrs News/
+|-- backend/
+|   |-- app.js
+|   |-- .env.example
+|   |-- package.json
+|   |-- src/
+|   `-- test/
+|-- frontend/
+|   |-- .env.example
+|   |-- eslint.config.js
+|   |-- package.json
+|   `-- src/
+|-- README.md
+`-- .gitignore
 ```
 
 ## Notes
 
-- `frontend/src/constants/news.js` currently uses `https://two4hrs-news.onrender.com`.
-- `http://localhost:5000` appears in this README only for local backend development.
-- If you want frontend and backend to run fully locally, change `API_BASE` to `http://localhost:5000`.
-- The backend warms all three feeds shortly after startup.
+- Local JSON cache files are stored in `backend/.cache/` and ignored by Git.
+- The frontend defaults to local backend development when no `.env` file exists.
+- Existing deployed URLs can still be used by setting `VITE_API_BASE_URL`.
+- The app is designed to remain usable without paid hosting, paid databases, or paid APIs.
 
 ## License
 

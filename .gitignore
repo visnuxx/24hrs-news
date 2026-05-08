@@ -4,6 +4,8 @@ backend/node_modules/
 
 dist/
 frontend/dist/
+backend/.cache/
 
 env/
 backend/.env
+frontend/.env

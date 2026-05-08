@@ -107,6 +107,19 @@
   },
 ];
 
+const TAMIL_FALLBACK_RULES = [
+  { label: "Politics", keywords: ["தேர்தல்", "வாக்கு", "அரசு", "அமைச்சர்", "முதலமைச்சர்", "ஆளுநர்", "அரசியல்"] },
+  { label: "Conflict", keywords: ["போர்", "தாக்குதல்", "படைகள்", "ராணுவம்"] },
+  { label: "Sports", keywords: ["கிரிக்கெட்", "கால்பந்து", "விளையாட்டு", "ஒலிம்பிக்"] },
+  { label: "Technology", keywords: ["தொழில்நுட்பம்", "செயற்கை நுண்ணறிவு", "மொபைல்"] },
+  { label: "Business", keywords: ["வணிகம்", "பொருளாதாரம்", "பங்குச்சந்தை"] },
+  { label: "Crime", keywords: ["கைது", "கொலை", "திருட்டு", "மோசடி", "சிறை"] },
+  { label: "Health", keywords: ["உடல்நலம்", "மருத்துவம்", "நோய்", "மருந்து", "மருத்துவமனை"] },
+  { label: "Climate", keywords: ["வெள்ளம்", "வறட்சி", "புயல்", "நிலநடுக்கம்", "மழை"] },
+  { label: "Entertainment", keywords: ["திரைப்படம்", "சினிமா", "நடிகர்", "நடிகை", "இசை", "பாடல்"] },
+  { label: "World", keywords: ["உலகம்", "சீனா", "அமெரிக்கா", "ஐரோப்பா", "இலங்கை"] },
+];
+
 function keywordLabel(title) {
   const text = " " + title.toLowerCase() + " ";
   for (const rule of KEYWORD_RULES) {
@@ -118,9 +131,12 @@ function keywordLabel(title) {
     const partialHit = rule.partial.some((kw) => text.includes(kw));
     if (partialHit) return rule.label;
   }
+  for (const rule of TAMIL_FALLBACK_RULES) {
+    if (rule.keywords.some((kw) => title.includes(kw))) return rule.label;
+  }
   return "World";
 }
 
 
-module.exports = { keywordLabel, KEYWORD_RULES };
+module.exports = { keywordLabel, KEYWORD_RULES, TAMIL_FALLBACK_RULES };
 

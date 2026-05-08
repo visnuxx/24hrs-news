@@ -1,4 +1,4 @@
-﻿const fs = require("fs");
+const fs = require("fs");
 const path = require("path");
 
 const CACHE_DIR = path.join(__dirname, "..", "..", ".cache");
@@ -29,23 +29,23 @@ const FEEDS = {
     },
     {
       url: "https://news.google.com/rss/search?q=chennai+news&hl=en-IN&gl=IN&ceid=IN:en",
-      source: "Google News Â· Chennai",
+      source: "Google News · Chennai",
     },
     {
       url: "https://news.google.com/rss/search?q=coimbatore+news&hl=en-IN&gl=IN&ceid=IN:en",
-      source: "Google News Â· Coimbatore",
+      source: "Google News · Coimbatore",
     },
     {
       url: "https://news.google.com/rss/search?q=madurai+news&hl=en-IN&gl=IN&ceid=IN:en",
-      source: "Google News Â· Madurai",
+      source: "Google News · Madurai",
     },
     {
       url: "https://news.google.com/rss/search?q=trichy+news&hl=en-IN&gl=IN&ceid=IN:en",
-      source: "Google News Â· Trichy",
+      source: "Google News · Trichy",
     },
     {
       url: "https://news.google.com/rss/search?q=salem+tamil+nadu+news&hl=en-IN&gl=IN&ceid=IN:en",
-      source: "Google News Â· Salem",
+      source: "Google News · Salem",
     },
   ],
   tamil: [
@@ -55,23 +55,23 @@ const FEEDS = {
     },
     {
       url: "https://rss.dinamalar.com/?cat=ara1",
-      source: "Dinamalar Â· à®…à®°à®šà®¿à®¯à®²à¯",
+      source: "Dinamalar · அரசியல்",
     },
     {
       url: "https://www.vikatan.com/rss",
       source: "Vikatan",
     },
     {
-      url: "https://news.google.com/rss/search?q=à®¤à®®à®¿à®´à¯à®¨à®¾à®Ÿà¯&hl=ta&gl=IN&ceid=IN:ta",
-      source: "Google News Â· à®¤à®®à®¿à®´à¯",
+      url: "https://news.google.com/rss/search?q=தமிழ்நாடு&hl=ta&gl=IN&ceid=IN:ta",
+      source: "Google News · தமிழ்",
     },
     {
-      url: "https://news.google.com/rss/search?q=à®šà¯†à®©à¯à®©à¯ˆ&hl=ta&gl=IN&ceid=IN:ta",
-      source: "Google News Â· à®šà¯†à®©à¯à®©à¯ˆ",
+      url: "https://news.google.com/rss/search?q=சென்னை&hl=ta&gl=IN&ceid=IN:ta",
+      source: "Google News · சென்னை",
     },
     {
       url: "https://tamil.oneindia.com/rss/feeds/tamilnadu-fb.xml",
-      source: "oneindia",
+      source: "OneIndia Tamil",
     },
     {
       url: "https://tamil.news18.com/rss/tamil-nadu.xml",
@@ -90,4 +90,3 @@ const VALID_LABELS = [
 ];
 
 module.exports = { CACHE_DIR, CACHE_TTL_MS, FEEDS, VALID_LABELS };
-

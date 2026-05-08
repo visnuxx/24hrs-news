@@ -211,7 +211,12 @@ ${JSON.stringify(inputList)}`;
     };
 
   } catch (err) {
-    console.error(`[briefing] ❌ Gemini failed:`, err.message);
+    const status = err.response?.status;
+    const reason =
+      status === 429 ? "quota or rate limit reached" :
+      status === 403 ? "API key rejected or quota unavailable" :
+      err.message;
+    console.error(`[briefing] Gemini unavailable, using fallback: ${reason}`);
     return buildKeywordFallback(todayArticles, feedKey);
   }
 }

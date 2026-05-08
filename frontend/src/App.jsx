@@ -17,8 +17,8 @@ import {
   EmptyState,
 } from "./components/index.jsx";
 function App() {
-  const [dark, setDark]         = useState(false);
-  const [lang, setLang]         = useState("en");
+  const [dark, setDark] = useState(() => localStorage.getItem("briefed-theme") === "dark");
+  const [lang, setLang] = useState(() => localStorage.getItem("briefed-lang") || "en");
   const t = TRANSLATIONS[lang];
 
   const [news, setNews]             = useState([]);
@@ -42,7 +42,14 @@ function App() {
   const displayStatus = tamilSubActive ? tamilSubStatus : status;
   const useCardLayout = activeFeed?.key !== "tamil" && !tamilSubActive;
 
-  useEffect(() => { applyTheme(dark); }, [dark]);
+  useEffect(() => {
+    applyTheme(dark);
+    localStorage.setItem("briefed-theme", dark ? "dark" : "light");
+  }, [dark]);
+
+  useEffect(() => {
+    localStorage.setItem("briefed-lang", lang);
+  }, [lang]);
 
   const availableLabels = useMemo(() => {
     const c = {};
@@ -63,6 +70,19 @@ function App() {
     if (search.trim()) { const q = search.trim().toLowerCase(); r = r.filter(i => (i.title || "").toLowerCase().includes(q)); }
     return r;
   }, [displayNews, activeLabel, activeSource, search]);
+
+  const lastUpdated = useMemo(() => {
+    const timestamps = displayNews
+      .map((item) => new Date(item.pubDate).getTime())
+      .filter((time) => !Number.isNaN(time));
+    if (timestamps.length === 0) return "";
+    return new Date(Math.max(...timestamps)).toLocaleString("en-IN", {
+      day: "numeric",
+      month: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  }, [displayNews]);
 
   const fetchNews = useCallback(async (feed) => {
     setActiveFeed(feed);
@@ -129,7 +149,7 @@ function App() {
     }}>
       <div style={{ maxWidth:1040, margin:"0 auto", padding:"0 20px 64px" }}>
 
-        <Header dark={dark} setDark={setDark} t={t} />
+        <Header dark={dark} setDark={setDark} lang={lang} setLang={setLang} t={t} />
 
         <FeedTabs
           activeFeed={activeFeed} onSelect={fetchNews}
@@ -193,6 +213,7 @@ function App() {
               t={t}
               viewMode={viewMode}
               setViewMode={setViewMode}
+              lastUpdated={lastUpdated}
               showToggle={displayStatus === "success"}
             />
 
