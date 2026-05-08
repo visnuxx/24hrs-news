@@ -1,4 +1,10 @@
-export const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+const isLocalHost =
+  window.location.hostname === "localhost" ||
+  window.location.hostname === "127.0.0.1";
+
+export const API_BASE =
+  import.meta.env.VITE_API_BASE_URL ||
+  (isLocalHost ? "http://localhost:5000" : "https://two4hrs-news.onrender.com");
 
 export const FEEDS = [
   { key:"tamil-nadu",    label:"Tamil Nadu",    taLabel:"தமிழ்நாடு", endpoint:"/news/tamil-nadu",    summaryKey:"tamilNadu",     digestKey:"tamilNadu",     accent:"#1D9E75", fill:"#E1F5EE", ink:"#085041" },
