@@ -61,6 +61,7 @@ const Thumb = ({ label, dark, image, mode = "banner", height = 140, size = 76 })
 // ---------- Sticky Header ----------
 const Header = ({ dark, setDark, t }) => {
   const [scrolled, setScrolled] = useState(false);
+  const scrolledBg = dark ? "rgba(17,16,9,0.90)" : "rgba(246,247,249,0.90)";
   useEffect(() => {
     const handler = () => setScrolled(window.scrollY > 8);
     window.addEventListener("scroll", handler, { passive:true });
@@ -70,7 +71,7 @@ const Header = ({ dark, setDark, t }) => {
   return (
     <header style={{
       position:"sticky", top:0, zIndex:200,
-      background: scrolled ? "rgba(246,247,249,0.90)" : "transparent",
+      background: scrolled ? scrolledBg : "transparent",
       backdropFilter: scrolled ? "blur(14px)" : "none",
       WebkitBackdropFilter: scrolled ? "blur(14px)" : "none",
       borderBottom:`1px solid ${scrolled ? "var(--border)" : "transparent"}`,
