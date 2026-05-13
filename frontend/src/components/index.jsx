@@ -59,7 +59,7 @@ const Thumb = ({ label, dark, image, mode = "banner", height = 140, size = 76 })
 };
 
 // ---------- Sticky Header ----------
-const Header = ({ dark, setDark, lang, setLang, t }) => {
+const Header = ({ dark, setDark, t }) => {
   const [scrolled, setScrolled] = useState(false);
   useEffect(() => {
     const handler = () => setScrolled(window.scrollY > 8);
@@ -85,14 +85,6 @@ const Header = ({ dark, setDark, lang, setLang, t }) => {
           <span style={{ fontSize:10, fontWeight:600, letterSpacing:0.8, textTransform:"uppercase", color:"var(--text3)", background:"var(--surface2)", border:"1px solid var(--border)", borderRadius:100, padding:"2px 8px" }}>LIVE</span>
         </div>
         <div style={{ display:"flex", gap:7 }}>
-          <button onClick={() => setLang(lang === "en" ? "ta" : "en")} style={{
-            fontSize:12, fontWeight:500, color:"var(--text2)",
-            background:"var(--surface)", border:"1px solid var(--border)",
-            borderRadius:100, padding:"6px 12px", letterSpacing:0.2,
-            transition:"all 0.15s",
-          }}>
-            {lang === "en" ? "தமிழ்" : "English"}
-          </button>
           <button onClick={() => setDark(d => !d)} style={{
             fontSize:12, fontWeight:500, color:"var(--text2)",
             background:"var(--surface)", border:"1px solid var(--border)",

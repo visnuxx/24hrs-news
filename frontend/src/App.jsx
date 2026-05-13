@@ -18,8 +18,7 @@ import {
 } from "./components/index.jsx";
 function App() {
   const [dark, setDark] = useState(() => localStorage.getItem("briefed-theme") === "dark");
-  const [lang, setLang] = useState(() => localStorage.getItem("briefed-lang") || "en");
-  const t = TRANSLATIONS[lang];
+  const t = TRANSLATIONS.en;
 
   const [news, setNews]             = useState([]);
   const [status, setStatus]         = useState("idle");
@@ -46,10 +45,6 @@ function App() {
     applyTheme(dark);
     localStorage.setItem("briefed-theme", dark ? "dark" : "light");
   }, [dark]);
-
-  useEffect(() => {
-    localStorage.setItem("briefed-lang", lang);
-  }, [lang]);
 
   const availableLabels = useMemo(() => {
     const c = {};
@@ -149,7 +144,7 @@ function App() {
     }}>
       <div style={{ maxWidth:1040, margin:"0 auto", padding:"0 20px 64px" }}>
 
-        <Header dark={dark} setDark={setDark} lang={lang} setLang={setLang} t={t} />
+        <Header dark={dark} setDark={setDark} t={t} />
 
         <FeedTabs
           activeFeed={activeFeed} onSelect={fetchNews}
