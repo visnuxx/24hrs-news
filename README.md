@@ -2,7 +2,7 @@
 
 Briefed is a full-stack news briefing app for recent Tamil Nadu, Tamil-language, and international headlines. It fetches public RSS feeds, removes duplicate stories, labels topics, caches results locally, and generates an optional daily editorial briefing with Gemini.
 
-Live demo: https://24hrs-news.vercel.app
+Live demo: https://www.newswithai.me/
 
 ## Why This Project Matters
 
