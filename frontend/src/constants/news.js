@@ -8,7 +8,7 @@ export const API_BASE =
 
 export const FEEDS = [
   { key:"tamil-nadu",    label:"Tamil Nadu",    taLabel:"தமிழ்நாடு", endpoint:"/news/tamil-nadu",    summaryKey:"tamilNadu",     digestKey:"tamilNadu",     accent:"#1D9E75", fill:"#E1F5EE", ink:"#085041" },
-  { key:"international", label:"International", taLabel:"உலகம்",     endpoint:"/news/international", summaryKey:"international", digestKey:"international", accent:"#185FA5", fill:"#E6F1FB", ink:"#0C447C" },
+  { key:"international", label:"World", taLabel:"உலகம்",     endpoint:"/news/international", summaryKey:"international", digestKey:"international", accent:"#185FA5", fill:"#E6F1FB", ink:"#0C447C" },
 ];
 
 export const TAMIL_FEED = { key:"tamil", label:"Tamil", accent:"#854F0B", fill:"#FAEEDA", ink:"#633806" };

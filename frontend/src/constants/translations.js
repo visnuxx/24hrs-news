@@ -12,7 +12,7 @@
     articles:"articles", updated:"Updated",
     poweredByGemini:"Summarized by Gemini when available",
     geminiError:"Gemini is unavailable", keywordFallback:"Free Gemini quota saved: showing keyword-grouped fallback",
-    feeds:{"tamil-nadu":"Tamil Nadu", international:"International", tamil:"தமிழ்"},
+    feeds:{"tamil-nadu":"Tamil Nadu", international:"World", tamil:"தமிழ்"},
     gridView:"Grid", listView:"List", filters:"Filters", language:"Language",
     aiSummary:"AI-powered news briefing",
     aiSubtitle:"Today's stories grouped and summarized by AI, powered by Gemini.",
